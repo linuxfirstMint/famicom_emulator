@@ -12,6 +12,7 @@ pub struct CPU {
     pub accumulator: u8,
     pub status: ProcessorStatus,
     pub program_counter: u16,
+    pub index_register_x: u8,
 }
 
 impl CPU {
@@ -28,6 +29,7 @@ impl CPU {
                 negative_flag: false,
             },
             program_counter: 0,
+            index_register_x: 0,
         }
     }
     pub fn interpret(&mut self, program: Vec<u8>) {
@@ -85,12 +87,14 @@ mod tests {
         assert!(cpu.status.zero_flag == false);
         assert!(cpu.status.negative_flag == false);
     }
+
     #[test]
     fn test_0xa9_lda_zero_flag() {
         let mut cpu = CPU::new();
         cpu.interpret(vec![0xa9, 0x00, 0x00]);
         assert!(cpu.status.zero_flag == true);
     }
+
     #[test]
     fn test_0xa9_lda_negative_flag() {
         let mut cpu = CPU::new();
