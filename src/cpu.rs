@@ -32,6 +32,30 @@ impl CPU {
             index_register_x: 0,
         }
     }
+
+    fn lda(&mut self, value: u8) {
+        self.accumulator = value;
+        self.update_zero_and_negative_flags(self.accumulator)
+    }
+
+    fn tax(&mut self) {
+        self.index_register_x = self.accumulator;
+        self.update_zero_and_negative_flags(self.index_register_x)
+    }
+
+    fn update_zero_and_negative_flags(&mut self, result: u8) {
+        if result == 0 {
+            self.status.zero_flag = true;
+        } else {
+            self.status.zero_flag = false
+        }
+        if result & 0b1000_0000 != 0 {
+            self.status.negative_flag = true
+        } else {
+            self.status.negative_flag = false
+        }
+    }
+
     pub fn interpret(&mut self, program: Vec<u8>) {
         self.program_counter = 0;
 
@@ -40,45 +64,19 @@ impl CPU {
             self.program_counter += 1;
 
             match opcode {
-                0xaa => {
-                    self.index_register_x = self.accumulator;
-
-                    if self.index_register_x == 0 {
-                        self.status.zero_flag = true;
-                    } else {
-                        self.status.zero_flag = false
-                    }
-                    if self.index_register_x & 0b1000_0000 != 0 {
-                        self.status.negative_flag = true
-                    } else {
-                        self.status.negative_flag = false
-                    }
-                }
                 0xa9 => {
                     let param = program[self.program_counter as usize];
                     self.program_counter += 1;
-                    self.accumulator = param;
-
-                    if self.accumulator == 0 {
-                        self.status.zero_flag = true
-                    } else {
-                        self.status.zero_flag = false
-                    }
-
-                    if self.accumulator & 0b1000_0000 != 0 {
-                        self.status.negative_flag = true
-                    } else {
-                        self.status.negative_flag = false
-                    }
+                    self.lda(param)
                 }
-                0x00 => {
-                    return;
-                }
+                0xaa => self.tax(),
+                0x00 => return,
                 _ => todo!(),
             }
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
