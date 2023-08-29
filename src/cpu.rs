@@ -38,8 +38,25 @@ impl CPU {
             self.program_counter += 1;
 
             match opcode {
+                0x00 => {
+                    return;
+                }
                 _ => todo!(),
             }
         }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_0x00_brk() {
+        let mut cpu = CPU::new();
+        cpu.interpret(vec![0x00]);
+        assert_eq!(
+            cpu.program_counter, 1,
+            "オペコードBRKが実行された際のプログラムカウンタが正しくありません"
+        );
     }
 }
