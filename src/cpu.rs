@@ -13,6 +13,7 @@ pub struct CPU {
     pub status: ProcessorStatus,
     pub program_counter: u16,
     pub index_register_x: u8,
+    memory: [u8; 0xFFFF],
 }
 
 impl CPU {
@@ -30,7 +31,16 @@ impl CPU {
             },
             program_counter: 0,
             index_register_x: 0,
+            memory: [0; 0xFFFF],
         }
+    }
+
+    fn mem_read(&self, addr: u16) -> u8 {
+        self.memory[addr as usize]
+    }
+
+    fn mem_write(&mut self, addr: u16, data: u8) {
+        self.memory[addr as usize] = data
     }
 
     fn lda(&mut self, value: u8) {
@@ -186,5 +196,19 @@ mod tests {
         cpu.interpret(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]);
 
         assert_eq!(cpu.index_register_x, 0xc1)
+    }
+
+    #[test]
+    fn test_mem_read_write() {
+        let mut cpu = CPU::new();
+
+        cpu.mem_write(0x8000, 0xAB);
+        cpu.mem_write(0x8001, 0xCD);
+
+        let data1 = cpu.mem_read(0x8000);
+        let data2 = cpu.mem_read(0x8001);
+
+        assert_eq!(data1, 0xAB);
+        assert_eq!(data2, 0xCD);
     }
 }
