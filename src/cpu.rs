@@ -13,6 +13,7 @@ pub struct CPU {
     pub status: ProcessorStatus,
     pub program_counter: u16,
     pub index_register_x: u8,
+    memory: [u8; 0xFFFF],
 }
 
 impl CPU {
@@ -30,8 +31,14 @@ impl CPU {
             },
             program_counter: 0,
             index_register_x: 0,
+            memory: [0; 0xFFFF],
         }
     }
+
+    fn mem_read(&self, addr: u16) -> u8 {
+        self.memory[addr as usize]
+    }
+
 
     fn lda(&mut self, value: u8) {
         self.accumulator = value;
