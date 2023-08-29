@@ -40,6 +40,20 @@ impl CPU {
             self.program_counter += 1;
 
             match opcode {
+                0xaa => {
+                    self.index_register_x = self.accumulator;
+
+                    if self.index_register_x == 0 {
+                        self.status.zero_flag = true;
+                    } else {
+                        self.status.zero_flag = false
+                    }
+                    if self.index_register_x & 0b1000_0000 != 0 {
+                        self.status.negative_flag = true
+                    } else {
+                        self.status.negative_flag = false
+                    }
+                }
                 0xa9 => {
                     let param = program[self.program_counter as usize];
                     self.program_counter += 1;
@@ -99,6 +113,31 @@ mod tests {
     fn test_0xa9_lda_negative_flag() {
         let mut cpu = CPU::new();
         cpu.interpret(vec![0xa9, 0x80, 0x00]);
+        assert!(cpu.status.negative_flag == true);
+    }
+
+    #[test]
+    fn test_0xaa_tax_move_a_to_x() {
+        let mut cpu = CPU::new();
+        cpu.accumulator = 0x10;
+        cpu.interpret(vec![0xaa, 0x00]);
+        assert_eq!(cpu.index_register_x, 16);
+        assert!(cpu.status.zero_flag == false);
+        assert!(cpu.status.negative_flag == false);
+    }
+
+    #[test]
+    fn test_0xaa_tax_zero_flag() {
+        let mut cpu = CPU::new();
+        cpu.interpret(vec![0xaa, 0x00]);
+        assert!(cpu.status.zero_flag == true);
+    }
+
+    #[test]
+    fn test_0xaa_tax_negative_flag() {
+        let mut cpu = CPU::new();
+        cpu.accumulator = 0x80;
+        cpu.interpret(vec![0xaa, 0x00]);
         assert!(cpu.status.negative_flag == true);
     }
 }
