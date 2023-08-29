@@ -43,6 +43,15 @@ impl CPU {
         self.update_zero_and_negative_flags(self.index_register_x)
     }
 
+    fn inx(&mut self) {
+        if self.index_register_x == 0xff {
+            self.index_register_x = 0;
+        } else {
+            self.index_register_x += 1;
+        }
+        self.update_zero_and_negative_flags(self.index_register_x)
+    }
+
     fn update_zero_and_negative_flags(&mut self, result: u8) {
         if result == 0 {
             self.status.zero_flag = true;
@@ -70,6 +79,7 @@ impl CPU {
                     self.lda(param)
                 }
                 0xaa => self.tax(),
+                0xe8 => self.inx(),
                 0x00 => return,
                 _ => todo!(),
             }
@@ -136,6 +146,41 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.accumulator = 0x80;
         cpu.interpret(vec![0xaa, 0x00]);
+        assert!(cpu.status.negative_flag == true);
+    }
+
+    #[test]
+    fn test_0xe8_inx_increment_register_x() {
+        let mut cpu = CPU::new();
+        cpu.index_register_x = 0;
+        cpu.interpret(vec![0xe8, 0x00]);
+        assert_eq!(cpu.index_register_x, 1);
+        assert!(cpu.status.zero_flag == false);
+        assert!(cpu.status.negative_flag == false);
+    }
+
+    #[test]
+    fn test_0xe8_inx_zero_flag() {
+        let mut cpu = CPU::new();
+        cpu.index_register_x = 0xff;
+        cpu.interpret(vec![0xe8, 0x00]);
+        assert_eq!(cpu.index_register_x, 0);
+        assert!(cpu.status.zero_flag == true);
+    }
+    #[test]
+    fn test_0xe8_inx_overflow() {
+        let mut cpu = CPU::new();
+        cpu.index_register_x = 0xff;
+        cpu.interpret(vec![0xe8, 0xe8, 0x00]);
+
+        assert_eq!(cpu.index_register_x, 1)
+    }
+
+    #[test]
+    fn test_0xe8_inx_negative_flag() {
+        let mut cpu = CPU::new();
+        cpu.index_register_x = 0x80;
+        cpu.interpret(vec![0xe8, 0x00]);
         assert!(cpu.status.negative_flag == true);
     }
 }
