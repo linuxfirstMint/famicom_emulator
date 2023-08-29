@@ -38,6 +38,23 @@ impl CPU {
             self.program_counter += 1;
 
             match opcode {
+                0xa9 => {
+                    let param = program[self.program_counter as usize];
+                    self.program_counter += 1;
+                    self.accumulator = param;
+
+                    if self.accumulator == 0 {
+                        self.status.zero_flag = true
+                    } else {
+                        self.status.zero_flag = false
+                    }
+
+                    if self.accumulator & 0b1000_0000 != 0 {
+                        self.status.negative_flag = true
+                    } else {
+                        self.status.negative_flag = false
+                    }
+                }
                 0x00 => {
                     return;
                 }
@@ -58,5 +75,26 @@ mod tests {
             cpu.program_counter, 1,
             "オペコードBRKが実行された際のプログラムカウンタが正しくありません"
         );
+    }
+
+    #[test]
+    fn test_0x9a_lda_load_immediate_load_data() {
+        let mut cpu = CPU::new();
+        cpu.interpret(vec![0xa9, 0x05, 0x00]);
+        assert_eq!(cpu.accumulator, 0x05);
+        assert!(cpu.status.zero_flag == false);
+        assert!(cpu.status.negative_flag == false);
+    }
+    #[test]
+    fn test_0xa9_lda_zero_flag() {
+        let mut cpu = CPU::new();
+        cpu.interpret(vec![0xa9, 0x00, 0x00]);
+        assert!(cpu.status.zero_flag == true);
+    }
+    #[test]
+    fn test_0xa9_lda_negative_flag() {
+        let mut cpu = CPU::new();
+        cpu.interpret(vec![0xa9, 0x80, 0x00]);
+        assert!(cpu.status.negative_flag == true);
     }
 }
