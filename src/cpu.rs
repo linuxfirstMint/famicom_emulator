@@ -63,6 +63,13 @@ impl CPU {
         self.memory[addr as usize] = data
     }
 
+    fn mem_write_u16(&mut self, pos: u16, data: u16) {
+        let hi = (data >> 8) as u8;
+        let lo = (data & 0xff) as u8;
+        self.mem_write(pos, lo);
+        self.mem_write(pos + 1, hi);
+    }
+
     pub fn reset(&mut self) {
         self.accumulator = 0;
         self.index_register_x = 0;
@@ -73,7 +80,7 @@ impl CPU {
 
     pub fn load(&mut self, program: Vec<u8>) {
         self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
-        self.program_counter = 0x8000
+        self.mem_write_u16(0xfffc, 0x8000);
     }
 
     fn lda(&mut self, value: u8) {
@@ -246,6 +253,14 @@ mod tests {
     }
 
     #[test]
+    fn test_mem_read_write_u16() {
+        let mut cpu = CPU::new();
+        cpu.mem_write_u16(0x8000, 0xABCD);
+        let value = cpu.mem_read_u16(0x8000);
+        assert_eq!(value, 0xABCD)
+    }
+
+    #[test]
     fn test_load() {
         let mut cpu = CPU::new();
         let program: Vec<u8> = vec![0x01, 0x02, 0x03];
@@ -260,7 +275,7 @@ mod tests {
             );
             assert_eq!(cpu.memory[memory_index], byte);
         }
-        assert_eq!(cpu.program_counter, 0x8000);
+        assert_eq!(cpu.program_counter, 0);
     }
 
     #[test]
