@@ -43,6 +43,11 @@ impl CPU {
         self.memory[addr as usize] = data
     }
 
+    pub fn load(&mut self, program: Vec<u8>) {
+        self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
+        self.program_counter = 0x8000
+    }
+
     fn lda(&mut self, value: u8) {
         self.accumulator = value;
         self.update_zero_and_negative_flags(self.accumulator)
@@ -210,5 +215,23 @@ mod tests {
 
         assert_eq!(data1, 0xAB);
         assert_eq!(data2, 0xCD);
+    }
+
+    #[test]
+    fn test_load() {
+        let mut cpu = CPU::new();
+        let program: Vec<u8> = vec![0x01, 0x02, 0x03];
+        cpu.load(program.clone());
+
+        for (i, &byte) in program.iter().enumerate() {
+            let memory_index = 0x8000 + i;
+            assert!(
+                memory_index < cpu.memory.len(),
+                "Memory index out of range: 0x{:X}",
+                memory_index
+            );
+            assert_eq!(cpu.memory[memory_index], byte);
+        }
+        assert_eq!(cpu.program_counter, 0x8000);
     }
 }
