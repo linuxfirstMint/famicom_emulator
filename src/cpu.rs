@@ -8,6 +8,20 @@ pub struct ProcessorStatus {
     pub negative_flag: bool,
 }
 
+impl ProcessorStatus {
+    pub fn clear() -> Self {
+        ProcessorStatus {
+            carry_flag: false,
+            zero_flag: false,
+            interrupt_disable: false,
+            decimal_mode_flag: false,
+            break_command: false,
+            overflow_flag: false,
+            negative_flag: false,
+        }
+    }
+}
+
 pub struct CPU {
     pub accumulator: u8,
     pub status: ProcessorStatus,
@@ -41,6 +55,12 @@ impl CPU {
 
     fn mem_write(&mut self, addr: u16, data: u8) {
         self.memory[addr as usize] = data
+    }
+
+    pub fn reset(&mut self) {
+        self.accumulator = 0;
+        self.index_register_x = 0;
+        self.status = ProcessorStatus::clear();
     }
 
     pub fn load(&mut self, program: Vec<u8>) {
@@ -233,5 +253,17 @@ mod tests {
             assert_eq!(cpu.memory[memory_index], byte);
         }
         assert_eq!(cpu.program_counter, 0x8000);
+    }
+
+    #[test]
+    fn test_reset() {
+        let mut cpu = CPU::new();
+        cpu.accumulator = 1;
+        cpu.index_register_x = 1;
+        cpu.status.negative_flag = true;
+        cpu.reset();
+        assert_eq!(cpu.accumulator, 0,);
+        assert_eq!(cpu.index_register_x, 0,);
+        assert_eq!(cpu.status.negative_flag, false);
     }
 }
