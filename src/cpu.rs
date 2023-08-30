@@ -53,6 +53,12 @@ impl CPU {
         self.memory[addr as usize]
     }
 
+    fn mem_read_u16(&mut self, pos: u16) -> u16 {
+        let lo = self.mem_read(pos) as u16;
+        let hi = self.mem_read(pos + 1) as u16;
+        (hi << 8) | (lo as u16)
+    }
+
     fn mem_write(&mut self, addr: u16, data: u8) {
         self.memory[addr as usize] = data
     }
@@ -61,6 +67,8 @@ impl CPU {
         self.accumulator = 0;
         self.index_register_x = 0;
         self.status = ProcessorStatus::clear();
+
+        self.program_counter = self.mem_read_u16(0xfffc);
     }
 
     pub fn load(&mut self, program: Vec<u8>) {
