@@ -27,7 +27,7 @@ pub struct CPU {
     pub status: ProcessorStatus,
     pub program_counter: u16,
     pub index_register_x: u8,
-    memory: [u8; 0xFFFF],
+    memory: [u8; 0x10000],
 }
 
 impl CPU {
@@ -45,7 +45,7 @@ impl CPU {
             },
             program_counter: 0,
             index_register_x: 0,
-            memory: [0; 0xFFFF],
+            memory: [0; 0x10000],
         }
     }
 
