@@ -1,7 +1,7 @@
 ---
-name: enhancement issue template
-about: Here is a enhancement template for creating an issue
-title: "[XXX]"
+name: Feature request
+about: Suggest an idea for this project
+title: "[feature] "
 labels: enhancement
 assignees: ''
 
