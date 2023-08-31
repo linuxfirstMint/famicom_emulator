@@ -1,13 +1,12 @@
 ---
-name: issue template
-about: Here is a template for creating an issue
+name: enhancement issue template
+about: Here is a enhancement template for creating an issue
 title: "[XXX]"
-labels: ''
+labels: 'enhancement'
 assignees: ''
 
 ---
 
-// Template content
 ## Overview
 Please provide an overview of the issue you are creating.
 ex) I want to adapt the style of the header.
