@@ -15,6 +15,10 @@ ex) I want to adapt the style of the header.
 Describe the purpose of this issue
 ex) To style it.
 
+## Related Issues
+If this feature request is related to existing issues, mention them here with their corresponding issue numbers.
+ex) Related to #123, #456
+
 ## Task
 Break down and manage your tasks.
 - [ ] XXXX
