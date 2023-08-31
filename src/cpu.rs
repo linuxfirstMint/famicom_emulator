@@ -111,16 +111,14 @@ impl CPU {
         }
     }
 
-    pub fn interpret(&mut self, program: Vec<u8>) {
-        self.program_counter = 0;
-
+    pub fn run(&mut self) {
         loop {
-            let opcode = program[self.program_counter as usize];
+            let opcode = self.mem_read(self.program_counter);
             self.program_counter += 1;
 
             match opcode {
                 0xa9 => {
-                    let param = program[self.program_counter as usize];
+                    let param = self.mem_read(self.program_counter);
                     self.program_counter += 1;
                     self.lda(param)
                 }
@@ -140,9 +138,11 @@ mod tests {
     #[test]
     fn test_0x00_brk() {
         let mut cpu = CPU::new();
-        cpu.interpret(vec![0x00]);
+        cpu.load(vec![0x00]);
+        cpu.reset();
+        cpu.run();
         assert_eq!(
-            cpu.program_counter, 1,
+            cpu.program_counter, 0x8001,
             "オペコードBRKが実行された際のプログラムカウンタが正しくありません"
         );
     }
@@ -150,7 +150,9 @@ mod tests {
     #[test]
     fn test_0x9a_lda_load_immediate_load_data() {
         let mut cpu = CPU::new();
-        cpu.interpret(vec![0xa9, 0x05, 0x00]);
+        cpu.load(vec![0xa9, 0x05, 0x00]);
+        cpu.reset();
+        cpu.run();
         assert_eq!(cpu.accumulator, 0x05);
         assert!(cpu.status.zero_flag == false);
         assert!(cpu.status.negative_flag == false);
@@ -159,22 +161,27 @@ mod tests {
     #[test]
     fn test_0xa9_lda_zero_flag() {
         let mut cpu = CPU::new();
-        cpu.interpret(vec![0xa9, 0x00, 0x00]);
+        cpu.load(vec![0xa9, 0x00, 0x00]);
+        cpu.reset();
+        cpu.run();
         assert!(cpu.status.zero_flag == true);
     }
 
     #[test]
     fn test_0xa9_lda_negative_flag() {
         let mut cpu = CPU::new();
-        cpu.interpret(vec![0xa9, 0x80, 0x00]);
+        cpu.load(vec![0xa9, 0x80, 0x00]);
+        cpu.reset();
+        cpu.run();
         assert!(cpu.status.negative_flag == true);
     }
 
     #[test]
     fn test_0xaa_tax_move_a_to_x() {
         let mut cpu = CPU::new();
-        cpu.accumulator = 0x10;
-        cpu.interpret(vec![0xaa, 0x00]);
+        cpu.load(vec![0xa9, 0x10, 0xaa, 0x00]);
+        cpu.reset();
+        cpu.run();
         assert_eq!(cpu.index_register_x, 16);
         assert!(cpu.status.zero_flag == false);
         assert!(cpu.status.negative_flag == false);
@@ -183,23 +190,27 @@ mod tests {
     #[test]
     fn test_0xaa_tax_zero_flag() {
         let mut cpu = CPU::new();
-        cpu.interpret(vec![0xaa, 0x00]);
+        cpu.load(vec![0xa9, 0x00, 0xaa, 0x00]);
+        cpu.reset();
+        cpu.run();
         assert!(cpu.status.zero_flag == true);
     }
 
     #[test]
     fn test_0xaa_tax_negative_flag() {
         let mut cpu = CPU::new();
-        cpu.accumulator = 0x80;
-        cpu.interpret(vec![0xaa, 0x00]);
+        cpu.load(vec![0xa9, 0x80, 0xaa, 0x00]);
+        cpu.reset();
+        cpu.run();
         assert!(cpu.status.negative_flag == true);
     }
 
     #[test]
     fn test_0xe8_inx_increment_register_x() {
         let mut cpu = CPU::new();
-        cpu.index_register_x = 0;
-        cpu.interpret(vec![0xe8, 0x00]);
+        cpu.load(vec![0xe8, 0x00]);
+        cpu.reset();
+        cpu.run();
         assert_eq!(cpu.index_register_x, 1);
         assert!(cpu.status.zero_flag == false);
         assert!(cpu.status.negative_flag == false);
@@ -208,16 +219,18 @@ mod tests {
     #[test]
     fn test_0xe8_inx_zero_flag() {
         let mut cpu = CPU::new();
-        cpu.index_register_x = 0xff;
-        cpu.interpret(vec![0xe8, 0x00]);
+        cpu.load(vec![0xa9, 0xff, 0xaa, 0xe8, 0x00]);
+        cpu.reset();
+        cpu.run();
         assert_eq!(cpu.index_register_x, 0);
         assert!(cpu.status.zero_flag == true);
     }
     #[test]
     fn test_0xe8_inx_overflow() {
         let mut cpu = CPU::new();
-        cpu.index_register_x = 0xff;
-        cpu.interpret(vec![0xe8, 0xe8, 0x00]);
+        cpu.load(vec![0xa9, 0xff, 0xaa, 0xe8, 0xe8, 0x00]);
+        cpu.reset();
+        cpu.run();
 
         assert_eq!(cpu.index_register_x, 1)
     }
@@ -225,15 +238,18 @@ mod tests {
     #[test]
     fn test_0xe8_inx_negative_flag() {
         let mut cpu = CPU::new();
-        cpu.index_register_x = 0x80;
-        cpu.interpret(vec![0xe8, 0x00]);
+        cpu.load(vec![0xa9, 0x80, 0xaa, 0xe8, 0x00]);
+        cpu.reset();
+        cpu.run();
         assert!(cpu.status.negative_flag == true);
     }
 
     #[test]
     fn test_5_ops_working_together() {
         let mut cpu = CPU::new();
-        cpu.interpret(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]);
+        cpu.load(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]);
+        cpu.reset();
+        cpu.run();
 
         assert_eq!(cpu.index_register_x, 0xc1)
     }
