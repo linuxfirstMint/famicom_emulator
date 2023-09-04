@@ -36,6 +36,7 @@ pub enum AddressingMode {
     Indirect_X,
     Indirect_Y,
     NoneAddressing,
+    Relative,
 }
 
 pub struct CPU {
@@ -123,6 +124,13 @@ impl CPU {
                 let deref_base = (hi as u16) << 8 | (lo as u16);
                 let deref_addr = deref_base.wrapping_add(self.index_register_y as u16);
                 deref_addr
+            }
+
+            AddressingMode::Relative => {
+                let base = self.mem_read(self.program_counter) as i8;
+                let addr = (self.program_counter as i16).wrapping_add(base as i16) as u16;
+
+                addr
             }
 
             AddressingMode::NoneAddressing => panic!("mode {:?} is not supported", mode),
@@ -480,5 +488,14 @@ mod tests {
         let mode = AddressingMode::Indirect_Y;
         let result = cpu.get_operand_address(&mode);
         assert_eq!(result, 0xB255);
+    }
+
+    #[test]
+    fn test_get_operand_address_relative() {
+        let mut cpu = CPU::new();
+        cpu.memory[cpu.program_counter as usize] = 0x60;
+        let mode = AddressingMode::Relative;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0x60)
     }
 }
