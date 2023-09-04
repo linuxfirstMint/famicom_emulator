@@ -22,11 +22,30 @@ impl ProcessorStatus {
     }
 }
 
+#[derive(Debug)]
+#[allow(non_camel_case_types)]
+pub enum AddressingMode {
+    Immediate,
+    ZeroPage,
+    ZeroPage_X,
+    ZeroPage_Y,
+    Absolute,
+    Absolute_X,
+    Absolute_Y,
+    Indirect,
+    Indirect_X,
+    Indirect_Y,
+    NoneAddressing,
+    Relative,
+    Accumulator,
+}
+
 pub struct CPU {
     pub accumulator: u8,
     pub status: ProcessorStatus,
     pub program_counter: u16,
     pub index_register_x: u8,
+    pub index_register_y: u8,
     memory: [u8; 0x10000],
 }
 
@@ -45,7 +64,79 @@ impl CPU {
             },
             program_counter: 0,
             index_register_x: 0,
+            index_register_y: 0,
             memory: [0; 0x10000],
+        }
+    }
+
+    fn get_operand_address(&self, mode: &AddressingMode) -> u16 {
+        match mode {
+            AddressingMode::Immediate => self.program_counter,
+
+            AddressingMode::ZeroPage => self.mem_read(self.program_counter) as u16,
+
+            AddressingMode::ZeroPage_X => {
+                let pos = self.mem_read(self.program_counter);
+                let addr = pos.wrapping_add(self.index_register_x) as u16;
+                addr
+            }
+
+            AddressingMode::ZeroPage_Y => {
+                let pos = self.mem_read(self.program_counter);
+                let addr = pos.wrapping_add(self.index_register_y) as u16;
+                addr
+            }
+
+            AddressingMode::Absolute => self.mem_read_u16(self.program_counter),
+
+            AddressingMode::Absolute_X => {
+                let pos = self.mem_read_u16(self.program_counter);
+                let addr = pos.wrapping_add(self.index_register_x as u16);
+                addr
+            }
+
+            AddressingMode::Absolute_Y => {
+                let pos = self.mem_read_u16(self.program_counter);
+                let addr = pos.wrapping_add(self.index_register_y as u16);
+                addr
+            }
+
+            AddressingMode::Indirect => {
+                let base = self.mem_read(self.program_counter);
+                let lo = self.mem_read(base as u16);
+                let hi = self.mem_read((base).wrapping_add(1) as u16);
+                let addr = (hi as u16) << 8 | (lo as u16);
+                addr
+            }
+
+            AddressingMode::Indirect_X => {
+                let base = self.mem_read(self.program_counter);
+                let ptr = (base as u8).wrapping_add(self.index_register_x);
+                let lo = self.mem_read(ptr as u16);
+                let hi = self.mem_read(ptr.wrapping_add(1) as u16);
+                let addr = (hi as u16) << 8 | (lo as u16);
+                addr
+            }
+
+            AddressingMode::Indirect_Y => {
+                let base = self.mem_read(self.program_counter);
+                let lo = self.mem_read(base as u16);
+                let hi = self.mem_read((base).wrapping_add(1) as u16);
+                let deref_base = (hi as u16) << 8 | (lo as u16);
+                let deref_addr = deref_base.wrapping_add(self.index_register_y as u16);
+                deref_addr
+            }
+
+            AddressingMode::Relative => {
+                let base = self.mem_read(self.program_counter) as i8;
+                let addr = (self.program_counter as i16).wrapping_add(base as i16) as u16;
+
+                addr
+            }
+
+            AddressingMode::Accumulator => self.accumulator as u16,
+
+            AddressingMode::NoneAddressing => panic!("mode {:?} is not supported", mode),
         }
     }
 
@@ -53,7 +144,7 @@ impl CPU {
         self.memory[addr as usize]
     }
 
-    fn mem_read_u16(&mut self, pos: u16) -> u16 {
+    fn mem_read_u16(&self, pos: u16) -> u16 {
         let lo = self.mem_read(pos) as u16;
         let hi = self.mem_read(pos + 1) as u16;
         (hi << 8) | (lo as u16)
@@ -73,6 +164,7 @@ impl CPU {
     pub fn reset(&mut self) {
         self.accumulator = 0;
         self.index_register_x = 0;
+        self.index_register_y = 0;
         self.status = ProcessorStatus::clear();
 
         self.program_counter = self.mem_read_u16(0xfffc);
@@ -295,5 +387,127 @@ mod tests {
         assert_eq!(cpu.accumulator, 0,);
         assert_eq!(cpu.index_register_x, 0,);
         assert_eq!(cpu.status.negative_flag, false);
+    }
+
+    #[test]
+    fn test_get_operand_address_immediate() {
+        let cpu = CPU::new();
+        let mode = AddressingMode::Immediate;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, cpu.program_counter);
+    }
+
+    #[test]
+    fn test_get_operand_address_zero_page() {
+        let mut cpu = CPU::new();
+        cpu.memory[cpu.program_counter as usize] = 0x44;
+        let mode = AddressingMode::ZeroPage;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0x44);
+    }
+
+    #[test]
+    fn test_get_operand_address_zero_page_x() {
+        let mut cpu = CPU::new();
+        cpu.index_register_x = 0x10;
+        cpu.memory[cpu.program_counter as usize] = 0x44;
+        let mode = AddressingMode::ZeroPage_X;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0x54);
+    }
+
+    #[test]
+    fn test_get_operand_address_zero_page_y() {
+        let mut cpu = CPU::new();
+        cpu.index_register_y = 0x02;
+        cpu.memory[cpu.program_counter as usize] = 0x50;
+        let mode = AddressingMode::ZeroPage_Y;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0x52);
+    }
+    #[test]
+    fn test_get_operand_address_absolute() {
+        let mut cpu = CPU::new();
+        cpu.memory[cpu.program_counter as usize] = 0x80;
+        cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0x49;
+        let mode = AddressingMode::Absolute;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0x4980);
+    }
+
+    #[test]
+    fn test_get_operand_address_absolute_x() {
+        let mut cpu = CPU::new();
+        cpu.index_register_x = 0x20;
+        cpu.memory[cpu.program_counter as usize] = 0x30;
+        cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0x98;
+        let mode = AddressingMode::Absolute_X;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0x9850);
+    }
+
+    #[test]
+    fn test_get_operand_address_absolute_y() {
+        let mut cpu = CPU::new();
+        cpu.index_register_y = 0x42;
+        cpu.memory[cpu.program_counter as usize] = 0x90;
+        cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0xE0;
+        let mode = AddressingMode::Absolute_Y;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0xE0D2);
+    }
+
+    #[test]
+    fn test_get_operand_address_indirect() {
+        let mut cpu = CPU::new();
+        cpu.memory[cpu.program_counter as usize] = 0x22;
+        cpu.memory[0x22] = 0x50;
+        cpu.memory[0x23] = 0xAC;
+        let mode = AddressingMode::Indirect;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0xAC50);
+    }
+
+    #[test]
+    fn test_get_operand_address_indirect_x() {
+        let mut cpu = CPU::new();
+
+        cpu.memory[cpu.program_counter as usize] = 0x40;
+        cpu.index_register_x = 0x05;
+        cpu.memory[0x45] = 0x10;
+        cpu.memory[0x46] = 0x09;
+
+        let mode = AddressingMode::Indirect_X;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0x0910);
+    }
+    #[test]
+    fn test_get_operand_address_indirect_y() {
+        let mut cpu = CPU::new();
+        cpu.memory[cpu.program_counter as usize] = 0xA0;
+        cpu.memory[0xA0] = 0x50;
+        cpu.memory[0xA1] = 0xB2;
+        cpu.index_register_y = 0x05;
+        let mode = AddressingMode::Indirect_Y;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0xB255);
+    }
+
+    #[test]
+    fn test_get_operand_address_relative() {
+        let mut cpu = CPU::new();
+        cpu.memory[cpu.program_counter as usize] = 0x60;
+        let mode = AddressingMode::Relative;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0x60)
+    }
+
+    #[test]
+    fn test_get_operand_address_accumulator() {
+        let mut cpu = CPU::new();
+        cpu.accumulator = 0x42;
+        let mode = AddressingMode::Accumulator;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0x42);
     }
 }
