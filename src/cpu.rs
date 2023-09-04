@@ -37,6 +37,7 @@ pub enum AddressingMode {
     Indirect_Y,
     NoneAddressing,
     Relative,
+    Accumulator,
 }
 
 pub struct CPU {
@@ -132,6 +133,8 @@ impl CPU {
 
                 addr
             }
+
+            AddressingMode::Accumulator => self.accumulator as u16,
 
             AddressingMode::NoneAddressing => panic!("mode {:?} is not supported", mode),
         }
@@ -497,5 +500,14 @@ mod tests {
         let mode = AddressingMode::Relative;
         let result = cpu.get_operand_address(&mode);
         assert_eq!(result, 0x60)
+    }
+
+    #[test]
+    fn test_get_operand_address_accumulator() {
+        let mut cpu = CPU::new();
+        cpu.accumulator = 0x42;
+        let mode = AddressingMode::Accumulator;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0x42);
     }
 }
