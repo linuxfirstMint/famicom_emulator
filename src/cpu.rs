@@ -29,6 +29,7 @@ pub enum AddressingMode {
     ZeroPage,
     ZeroPage_X,
     ZeroPage_Y,
+    Absolute,
 }
 
 pub struct CPU {
@@ -77,6 +78,9 @@ impl CPU {
                 let addr = pos.wrapping_add(self.index_register_y) as u16;
                 addr
             }
+
+            AddressingMode::Absolute => self.mem_read_u16(self.program_counter),
+
         }
     }
 
@@ -365,4 +369,14 @@ mod tests {
         let result = cpu.get_operand_address(&mode);
         assert_eq!(result, 0x52);
     }
+    #[test]
+    fn test_get_operand_address_absolute() {
+        let mut cpu = CPU::new();
+        cpu.memory[cpu.program_counter as usize] = 0x80;
+        cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0x49;
+        let mode = AddressingMode::Absolute;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0x4980);
+    }
+
 }
