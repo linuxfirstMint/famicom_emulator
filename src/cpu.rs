@@ -22,6 +22,12 @@ impl ProcessorStatus {
     }
 }
 
+#[derive(Debug)]
+#[allow(non_camel_case_types)]
+pub enum AddressingMode {
+    Immediate,
+}
+
 pub struct CPU {
     pub accumulator: u8,
     pub status: ProcessorStatus,
@@ -46,6 +52,13 @@ impl CPU {
             program_counter: 0,
             index_register_x: 0,
             memory: [0; 0x10000],
+        }
+    }
+
+    fn get_operand_address(&self, mode: &AddressingMode) -> u16 {
+        match mode {
+            AddressingMode::Immediate => self.program_counter,
+
         }
     }
 
@@ -296,4 +309,13 @@ mod tests {
         assert_eq!(cpu.index_register_x, 0,);
         assert_eq!(cpu.status.negative_flag, false);
     }
+
+    #[test]
+    fn test_get_operand_address_immediate() {
+        let cpu = CPU::new();
+        let mode = AddressingMode::Immediate;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, cpu.program_counter);
+    }
+
 }
