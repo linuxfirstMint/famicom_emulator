@@ -181,7 +181,10 @@ impl CPU {
         self.run();
     }
 
-    fn lda(&mut self, value: u8) {
+    fn lda(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+
         self.accumulator = value;
         self.update_zero_and_negative_flags(self.accumulator)
     }
@@ -215,11 +218,39 @@ impl CPU {
             self.program_counter += 1;
 
             match opcode {
-                0xa9 => {
-                    let param = self.mem_read(self.program_counter);
+                0xA9 => {
+                    self.lda(&AddressingMode::Immediate);
                     self.program_counter += 1;
-                    self.lda(param)
                 }
+                0xA5 => {
+                    self.lda(&AddressingMode::ZeroPage);
+                    self.program_counter += 1;
+                }
+                0xB5 => {
+                    self.lda(&AddressingMode::ZeroPage_X);
+                    self.program_counter += 1;
+                }
+                0xAD => {
+                    self.lda(&AddressingMode::Absolute);
+                    self.program_counter += 1;
+                }
+                0xBD => {
+                    self.lda(&AddressingMode::Absolute_X);
+                    self.program_counter += 1;
+                }
+                0xB9 => {
+                    self.lda(&AddressingMode::Absolute_Y);
+                    self.program_counter += 1;
+                }
+                0xA1 => {
+                    self.lda(&AddressingMode::Indirect_X);
+                    self.program_counter += 1;
+                }
+                0xB1 => {
+                    self.lda(&AddressingMode::Indirect_Y);
+                    self.program_counter += 1;
+                }
+
                 0xaa => self.tax(),
                 0xe8 => self.inx(),
                 0x00 => return,
@@ -251,6 +282,13 @@ mod tests {
         assert_eq!(cpu.accumulator, 0x05);
         assert!(cpu.status.zero_flag == false);
         assert!(cpu.status.negative_flag == false);
+    }
+    #[test]
+    fn test_lda_from_memory() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0x55);
+        cpu.load_and_run(vec![0xA5, 0x10, 0x00]);
+        assert_eq!(cpu.accumulator, 0x55);
     }
 
     #[test]
