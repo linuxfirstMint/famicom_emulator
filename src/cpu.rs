@@ -35,6 +35,7 @@ pub enum AddressingMode {
     Indirect,
     Indirect_X,
     Indirect_Y,
+    NoneAddressing,
 }
 
 pub struct CPU {
@@ -124,6 +125,7 @@ impl CPU {
                 deref_addr
             }
 
+            AddressingMode::NoneAddressing => panic!("mode {:?} is not supported", mode),
         }
     }
 
