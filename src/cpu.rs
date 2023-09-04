@@ -35,6 +35,7 @@ pub struct CPU {
     pub status: ProcessorStatus,
     pub program_counter: u16,
     pub index_register_x: u8,
+    pub index_register_y: u8,
     memory: [u8; 0x10000],
 }
 
@@ -53,6 +54,7 @@ impl CPU {
             },
             program_counter: 0,
             index_register_x: 0,
+            index_register_y: 0,
             memory: [0; 0x10000],
         }
     }
@@ -96,6 +98,7 @@ impl CPU {
     pub fn reset(&mut self) {
         self.accumulator = 0;
         self.index_register_x = 0;
+        self.index_register_y = 0;
         self.status = ProcessorStatus::clear();
 
         self.program_counter = self.mem_read_u16(0xfffc);
