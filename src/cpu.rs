@@ -33,6 +33,7 @@ pub enum AddressingMode {
     Absolute_X,
     Absolute_Y,
     Indirect,
+    Indirect_X,
 }
 
 pub struct CPU {
@@ -100,6 +101,15 @@ impl CPU {
                 let base = self.mem_read(self.program_counter);
                 let lo = self.mem_read(base as u16);
                 let hi = self.mem_read((base).wrapping_add(1) as u16);
+                let addr = (hi as u16) << 8 | (lo as u16);
+                addr
+            }
+
+            AddressingMode::Indirect_X => {
+                let base = self.mem_read(self.program_counter);
+                let ptr = (base as u8).wrapping_add(self.index_register_x);
+                let lo = self.mem_read(ptr as u16);
+                let hi = self.mem_read(ptr.wrapping_add(1) as u16);
                 let addr = (hi as u16) << 8 | (lo as u16);
                 addr
             }
@@ -435,4 +445,17 @@ mod tests {
         assert_eq!(result, 0xAC50);
     }
 
+    #[test]
+    fn test_get_operand_address_indirect_x() {
+        let mut cpu = CPU::new();
+
+        cpu.memory[cpu.program_counter as usize] = 0x40;
+        cpu.index_register_x = 0x05;
+        cpu.memory[0x45] = 0x10;
+        cpu.memory[0x46] = 0x09;
+
+        let mode = AddressingMode::Indirect_X;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0x0910);
+    }
 }
