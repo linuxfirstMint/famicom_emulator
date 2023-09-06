@@ -38,6 +38,7 @@ pub enum AddressingMode {
     NoneAddressing,
     Relative,
     Accumulator,
+    Implicit,
 }
 
 pub struct CPU {
@@ -547,5 +548,13 @@ mod tests {
         let mode = AddressingMode::Accumulator;
         let result = cpu.get_operand_address(&mode);
         assert_eq!(result, 0x42);
+    }
+    
+    #[test]
+    fn test_get_operand_address_implicit() {
+        let cpu = CPU::new();
+        let mode = AddressingMode::Implicit;
+        let result = cpu.get_operand_address(&mode);
+        assert_eq!(result, 0);
     }
 }
