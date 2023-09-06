@@ -96,6 +96,7 @@ class NesdevSpider(scrapy.Spider):
             "Absolute,Y": "Absolute_Y",
             "(Indirect,X)": "Indirect_X",
             "(Indirect),Y": "Indirect_Y",
+            "Implied": "Implicit",
         }
         corrected_list = [
             AddressingMode[mode] if mode in AddressingMode else mode

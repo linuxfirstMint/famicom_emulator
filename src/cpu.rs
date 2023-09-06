@@ -1,3 +1,6 @@
+use crate::opcodes;
+use std::collections::HashMap;
+
 pub struct ProcessorStatus {
     pub carry_flag: bool,
     pub zero_flag: bool,
@@ -137,6 +140,8 @@ impl CPU {
 
             AddressingMode::Accumulator => self.accumulator as u16,
 
+            AddressingMode::Implicit => 0 as u16,
+
             AddressingMode::NoneAddressing => panic!("mode {:?} is not supported", mode),
         }
     }
@@ -219,6 +224,7 @@ impl CPU {
             self.program_counter += 1;
 
             match opcode {
+                // "LDA"
                 0xA9 => {
                     self.lda(&AddressingMode::Immediate);
                     self.program_counter += 1;
@@ -549,7 +555,6 @@ mod tests {
         let result = cpu.get_operand_address(&mode);
         assert_eq!(result, 0x42);
     }
-    
     #[test]
     fn test_get_operand_address_implicit() {
         let cpu = CPU::new();
