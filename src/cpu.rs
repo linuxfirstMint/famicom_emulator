@@ -1,4 +1,4 @@
-use crate::opcodes;
+use crate::opcodes::{self, OPCODES_MAP};
 use std::collections::HashMap;
 
 pub struct ProcessorStatus {
@@ -219,49 +219,31 @@ impl CPU {
     }
 
     pub fn run(&mut self) {
+        let ref opcodes = *opcodes::OPCODES_MAP;
+
         loop {
-            let opcode = self.mem_read(self.program_counter);
+            let code = self.mem_read(self.program_counter);
+
             self.program_counter += 1;
+            let program_counter_state = self.program_counter;
 
-            match opcode {
+            let opcode = opcodes
+                .get(&code)
+                .expect(&format!("OpCode: {:x} is not found", code));
+
+            match code {
                 // "LDA"
-                0xA9 => {
-                    self.lda(&AddressingMode::Immediate);
-                    self.program_counter += 1;
+                0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => {
+                    self.lda(&opcode.mode);
                 }
-                0xA5 => {
-                    self.lda(&AddressingMode::ZeroPage);
-                    self.program_counter += 1;
-                }
-                0xB5 => {
-                    self.lda(&AddressingMode::ZeroPage_X);
-                    self.program_counter += 1;
-                }
-                0xAD => {
-                    self.lda(&AddressingMode::Absolute);
-                    self.program_counter += 1;
-                }
-                0xBD => {
-                    self.lda(&AddressingMode::Absolute_X);
-                    self.program_counter += 1;
-                }
-                0xB9 => {
-                    self.lda(&AddressingMode::Absolute_Y);
-                    self.program_counter += 1;
-                }
-                0xA1 => {
-                    self.lda(&AddressingMode::Indirect_X);
-                    self.program_counter += 1;
-                }
-                0xB1 => {
-                    self.lda(&AddressingMode::Indirect_Y);
-                    self.program_counter += 1;
-                }
-
                 0xaa => self.tax(),
                 0xe8 => self.inx(),
                 0x00 => return,
                 _ => todo!(),
+            }
+
+            if program_counter_state == self.program_counter {
+                self.program_counter += (opcode.len - 1) as u16;
             }
         }
     }
