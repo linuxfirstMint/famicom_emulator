@@ -220,6 +220,7 @@ impl CPU {
 
     pub fn run(&mut self) {
         let ref opcodes = *opcodes::OPCODES_MAP;
+        // let ref opcodes: HashMap<u8, &'static opcodes::OpCode> = *opcodes::OPCODES_MAP;
 
         loop {
             let code = self.mem_read(self.program_counter);
@@ -278,6 +279,86 @@ mod tests {
         cpu.mem_write(0x10, 0x55);
         cpu.load_and_run(vec![0xA5, 0x10, 0x00]);
         assert_eq!(cpu.accumulator, 0x55);
+    }
+
+    #[test]
+    fn test_lda_immediate() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xA9, 0x10, 0x00]);
+        assert_eq!(cpu.accumulator, 0x10);
+    }
+
+    #[test]
+    fn test_lda_zero_page() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x10, 0x78);
+        cpu.load_and_run(vec![0xA5, 0x10, 0x00]);
+        assert_eq!(cpu.accumulator, 0x78);
+    }
+
+    #[test]
+    fn test_lda_zero_page_x() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x28, 0x07);
+        cpu.load(vec![0xB5, 0x08, 0x00]);
+        cpu.reset();
+        cpu.index_register_x = 0x20;
+        cpu.run();
+        assert_eq!(cpu.accumulator, 0x07);
+    }
+
+    #[test]
+    fn test_lda_absolute() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x5228, 0xF0);
+        cpu.load_and_run(vec![0xAD, 0x28, 0x52, 0x00]);
+        assert_eq!(cpu.accumulator, 0xF0);
+    }
+
+    #[test]
+    fn test_lda_absolute_x() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0xF0B9, 0x98);
+        cpu.load(vec![0xBD, 0xA8, 0xF0, 0x00]);
+        cpu.reset();
+        cpu.index_register_x = 0x11;
+        cpu.run();
+        assert_eq!(cpu.accumulator, 0x98);
+    }
+
+    #[test]
+    fn test_lda_absolute_y() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x5A00, 0xEA);
+        cpu.load(vec![0xB9, 0xB0, 0x59, 0x00]);
+        cpu.reset();
+        cpu.index_register_y = 0x50;
+        cpu.run();
+        assert_eq!(cpu.accumulator, 0xEA);
+    }
+
+    #[test]
+    fn test_lda_indirect_x() {
+        let mut cpu = CPU::new();
+        cpu.mem_write_u16(0x85, 0x2030);
+        cpu.mem_write(0x2030, 0xE1);
+        cpu.load(vec![0xA1, 0x80, 0x00]);
+        cpu.reset();
+        cpu.index_register_x = 0x05;
+        cpu.run();
+        assert_eq!(cpu.accumulator, 0xE1);
+    }
+
+    #[test]
+    fn test_lda_indirect_y() {
+        let mut cpu = CPU::new();
+        cpu.mem_write_u16(0x80, 0x2030);
+        cpu.mem_write(0x2035, 0xE6);
+        cpu.load(vec![0xB1, 0x80, 0x00]);
+        cpu.reset();
+        cpu.index_register_y = 0x05;
+        cpu.run();
+        assert_eq!(cpu.accumulator, 0xE6);
     }
 
     #[test]
@@ -512,9 +593,9 @@ mod tests {
     fn test_get_operand_address_indirect_y() {
         let mut cpu = CPU::new();
         cpu.memory[cpu.program_counter as usize] = 0xA0;
+        cpu.index_register_y = 0x05;
         cpu.memory[0xA0] = 0x50;
         cpu.memory[0xA1] = 0xB2;
-        cpu.index_register_y = 0x05;
         let mode = AddressingMode::Indirect_Y;
         let result = cpu.get_operand_address(&mode);
         assert_eq!(result, 0xB255);
