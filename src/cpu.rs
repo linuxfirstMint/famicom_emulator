@@ -1,4 +1,4 @@
-use crate::opcodes::{self, OPCODES_MAP};
+use crate::opcodes::{self, Operation::*, OPCODES_MAP};
 use std::collections::HashMap;
 
 pub struct ProcessorStatus {
@@ -25,7 +25,7 @@ impl ProcessorStatus {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[allow(non_camel_case_types)]
 pub enum AddressingMode {
     Immediate,
@@ -231,14 +231,13 @@ impl CPU {
                 .get(&code)
                 .expect(&format!("OpCode: {:x} is not found", code));
 
-            match code {
-                // "LDA"
-                0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => {
+            match opcode.mnemonic {
+                LDA => {
                     self.lda(&opcode.mode);
                 }
-                0xaa => self.tax(),
-                0xe8 => self.inx(),
-                0x00 => return,
+                TAX => self.tax(),
+                INX => self.inx(),
+                BRK => return,
                 _ => todo!(),
             }
 
