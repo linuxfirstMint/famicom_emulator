@@ -1,27 +1,17 @@
 use crate::opcodes::{self, Operation::*, OPCODES_MAP};
+use bitflags::bitflags;
 use std::collections::HashMap;
 
-pub struct ProcessorStatus {
-    pub carry_flag: bool,
-    pub zero_flag: bool,
-    pub interrupt_disable: bool,
-    pub decimal_mode_flag: bool, //Does not support
-    pub break_command: bool,
-    pub overflow_flag: bool,
-    pub negative_flag: bool,
-}
-
-impl ProcessorStatus {
-    pub fn clear() -> Self {
-        ProcessorStatus {
-            carry_flag: false,
-            zero_flag: false,
-            interrupt_disable: false,
-            decimal_mode_flag: false,
-            break_command: false,
-            overflow_flag: false,
-            negative_flag: false,
-        }
+bitflags! {
+    pub struct ProcessorStatus: u8 {
+        const CARRY = 1;
+        const ZERO = 1 << 1;
+        const INTERRUPT_DISABLE = 1 << 2;
+        const DECIMAL = 1 << 3;
+        const BREAK = 1 << 4;
+        // 1 << 5 (0b0010_0000) Unsend bit
+        const OVERFLOW = 1 << 6;
+        const NEGATIVE = 1 << 7;
     }
 }
 
@@ -57,15 +47,7 @@ impl CPU {
     pub fn new() -> Self {
         CPU {
             accumulator: 0,
-            status: ProcessorStatus {
-                carry_flag: false,
-                zero_flag: false,
-                interrupt_disable: false,
-                decimal_mode_flag: false,
-                break_command: false,
-                overflow_flag: false,
-                negative_flag: false,
-            },
+            status: ProcessorStatus::empty(),
             program_counter: 0,
             index_register_x: 0,
             index_register_y: 0,
@@ -171,7 +153,7 @@ impl CPU {
         self.accumulator = 0;
         self.index_register_x = 0;
         self.index_register_y = 0;
-        self.status = ProcessorStatus::clear();
+        self.status = ProcessorStatus::empty();
 
         self.program_counter = self.mem_read_u16(0xfffc);
     }
@@ -207,14 +189,14 @@ impl CPU {
 
     fn update_zero_and_negative_flags(&mut self, result: u8) {
         if result == 0 {
-            self.status.zero_flag = true;
+            self.status.set(ProcessorStatus::ZERO, true);
         } else {
-            self.status.zero_flag = false
+            self.status.set(ProcessorStatus::ZERO, false);
         }
         if result & 0b1000_0000 != 0 {
-            self.status.negative_flag = true
+            self.status.set(ProcessorStatus::NEGATIVE, true);
         } else {
-            self.status.negative_flag = false
+            self.status.set(ProcessorStatus::NEGATIVE, false);
         }
     }
 
@@ -265,14 +247,17 @@ mod tests {
                 cpu.load_and_run(vec![0xa9, 0x05, 0x00]);
 
                 assert_eq!(cpu.accumulator, 0x05);
-                assert!(cpu.status.zero_flag == false);
-                assert!(cpu.status.negative_flag == false);
+                assert_eq!(
+                    cpu.status
+                        .contains(ProcessorStatus::NEGATIVE | ProcessorStatus::ZERO),
+                    false
+                );
 
                 cpu.load_and_run(vec![0xa9, 0x00, 0x00]);
-                assert!(cpu.status.zero_flag == true);
+                assert!(cpu.status.contains(ProcessorStatus::ZERO));
 
                 cpu.load_and_run(vec![0xa9, 0x80, 0x00]);
-                assert!(cpu.status.negative_flag == true);
+                assert!(cpu.status.contains(ProcessorStatus::NEGATIVE));
             }
 
             #[test]
@@ -365,16 +350,17 @@ mod tests {
                 cpu.load_and_run(vec![0xa9, 0x10, 0xaa, 0x00]);
 
                 assert_eq!(cpu.index_register_x, 16);
-                assert!(cpu.status.zero_flag == false);
-                assert!(cpu.status.negative_flag == false);
+                assert_eq!(
+                    cpu.status
+                        .contains(ProcessorStatus::ZERO | ProcessorStatus::NEGATIVE),
+                    false
+                );
 
                 cpu.load_and_run(vec![0xa9, 0x00, 0xaa, 0x00]);
-
-                assert!(cpu.status.zero_flag == true);
+                assert_eq!(cpu.status.contains(ProcessorStatus::ZERO), true);
 
                 cpu.load_and_run(vec![0xa9, 0x80, 0xaa, 0x00]);
-
-                assert!(cpu.status.negative_flag == true);
+                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
             }
         }
         mod imx {
@@ -387,20 +373,20 @@ mod tests {
                 cpu.load_and_run(vec![0xe8, 0x00]);
 
                 assert_eq!(cpu.index_register_x, 1);
-                assert!(cpu.status.zero_flag == false);
-                assert!(cpu.status.negative_flag == false);
+                assert_eq!(
+                    cpu.status
+                        .contains(ProcessorStatus::ZERO | ProcessorStatus::NEGATIVE),
+                    false
+                );
 
                 cpu.load_and_run(vec![0xa9, 0xff, 0xaa, 0xe8, 0x00]);
-
                 assert_eq!(cpu.index_register_x, 0);
-                assert!(cpu.status.zero_flag == true);
+                assert_eq!(cpu.status.contains(ProcessorStatus::ZERO), true);
 
                 cpu.load_and_run(vec![0xa9, 0x80, 0xaa, 0xe8, 0x00]);
-
-                assert!(cpu.status.negative_flag == true);
+                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
 
                 cpu.load_and_run(vec![0xa9, 0xff, 0xaa, 0xe8, 0xe8, 0x00]);
-
                 assert_eq!(cpu.index_register_x, 1)
             }
         }
@@ -585,11 +571,11 @@ mod tests {
             let mut cpu = CPU::new();
             cpu.accumulator = 1;
             cpu.index_register_x = 1;
-            cpu.status.negative_flag = true;
+            cpu.status.insert(ProcessorStatus::NEGATIVE);
             cpu.reset();
             assert_eq!(cpu.accumulator, 0);
             assert_eq!(cpu.index_register_x, 0);
-            assert_eq!(cpu.status.negative_flag, false);
+            assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
         }
 
         #[test]
