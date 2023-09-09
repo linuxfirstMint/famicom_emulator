@@ -170,8 +170,7 @@ impl CPU {
     }
 
     fn lda(&mut self, mode: &AddressingMode) {
-        let addr = self.get_operand_address(mode);
-        let value = self.mem_read(addr);
+        let value = self.fetch_data(mode);
 
         self.accumulator = value;
         self.update_zero_and_negative_flags(self.accumulator)
@@ -185,6 +184,33 @@ impl CPU {
     fn inx(&mut self) {
         self.index_register_x = self.index_register_x.wrapping_add(1);
         self.update_zero_and_negative_flags(self.index_register_x)
+    }
+
+    fn adc(&mut self, mode: &AddressingMode) {
+        let value = self.fetch_data(mode);
+        let acc = self.accumulator;
+
+        let (result, carry1) = value.overflowing_add(self.accumulator);
+        let (final_result, carry2) =
+            result.overflowing_add(self.status_bit(&ProcessorStatus::CARRY));
+
+        self.accumulator = final_result;
+
+        self.status.set(ProcessorStatus::CARRY, carry1 | carry2);
+        self.status.set(
+            ProcessorStatus::OVERFLOW,
+            (acc ^ value) & 0x80 == 0 && (acc ^ final_result) & 0x80 != 0,
+        );
+        self.update_zero_and_negative_flags(self.accumulator);
+    }
+
+    fn status_bit(&self, reg: &ProcessorStatus) -> u8 {
+        self.status.bits() & reg.bits()
+    }
+
+    fn fetch_data(&self, mode: &AddressingMode) -> u8 {
+        let addr = self.get_operand_address(mode);
+        self.mem_read(addr)
     }
 
     fn update_zero_and_negative_flags(&mut self, result: u8) {
@@ -219,6 +245,7 @@ impl CPU {
                 }
                 TAX => self.tax(),
                 INX => self.inx(),
+                ADC => self.adc(&opcode.mode),
                 BRK => return,
                 _ => todo!(),
             }
@@ -245,7 +272,6 @@ mod tests {
                 let mut cpu = CPU::new();
 
                 cpu.load_and_run(vec![0xa9, 0x05, 0x00]);
-
                 assert_eq!(cpu.accumulator, 0x05);
                 assert_eq!(
                     cpu.status
@@ -402,6 +428,181 @@ mod tests {
                     cpu.program_counter, 0x8001,
                     "オペコードBRKが実行された際のプログラムカウンタが正しくありません"
                 );
+            }
+        }
+        mod adc {
+            use super::*;
+
+            mod effects {
+                use super::*;
+
+                #[test]
+                fn test_adc_no_carry() {
+                    //キャリーなし
+                    let mut cpu = CPU::new();
+
+                    cpu.load(vec![0x69, 0x10, 0x00]);
+                    cpu.reset();
+                    cpu.accumulator = 0x02;
+                    cpu.run();
+
+                    println!();
+
+                    assert_eq!(cpu.accumulator, 0x12);
+                    assert_eq!(
+                        cpu.status.contains(
+                            ProcessorStatus::CARRY
+                                | ProcessorStatus::ZERO
+                                | ProcessorStatus::OVERFLOW
+                                | ProcessorStatus::NEGATIVE
+                        ),
+                        false
+                    );
+                }
+
+                #[test]
+                fn test_adc_has_carry() {
+                    // 計算前にキャリーあり
+
+                    let mut cpu = CPU::new();
+
+                    cpu.load(vec![0x69, 0x10, 0x00]);
+                    cpu.reset();
+                    cpu.accumulator = 0x01;
+                    cpu.status.insert(ProcessorStatus::CARRY);
+                    cpu.run();
+
+                    assert_eq!(cpu.accumulator, 0x12);
+                    assert_eq!(
+                        cpu.status.contains(
+                            ProcessorStatus::CARRY
+                                | ProcessorStatus::ZERO
+                                | ProcessorStatus::OVERFLOW
+                                | ProcessorStatus::NEGATIVE
+                        ),
+                        false
+                    );
+                }
+                #[test]
+                fn test_adc_occur_carry() {
+                    // 計算中にキャリー発生
+
+                    let mut cpu = CPU::new();
+
+                    cpu.load(vec![0x69, 0x01, 0x00]);
+                    cpu.reset();
+                    cpu.accumulator = 0xFF;
+                    cpu.run();
+
+                    assert_eq!(cpu.accumulator, 0x0);
+                    assert_eq!(
+                        cpu.status
+                            .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
+                        true
+                    );
+                    assert_eq!(
+                        cpu.status
+                            .contains(ProcessorStatus::OVERFLOW | ProcessorStatus::NEGATIVE),
+                        false
+                    );
+                }
+
+                #[test]
+                fn test_adc_occur_overflow_plus() {
+                    //キャリーとオーバーフローが発生し計算結果がプラスの値になる場合
+                    let mut cpu = CPU::new();
+
+                    cpu.load(vec![0x69, 0x01, 0x00]);
+                    cpu.reset();
+                    cpu.accumulator = 0x7F;
+                    cpu.run();
+
+                    assert_eq!(cpu.accumulator, 0x80);
+                    assert_eq!(
+                        cpu.status
+                            .contains(ProcessorStatus::NEGATIVE | ProcessorStatus::OVERFLOW),
+                        true
+                    )
+                }
+
+                #[test]
+                fn test_adc_occur_overflow_minus() {
+                    //キャリーとオーバーフローが発生し計算結果がマイナスの値になる場合
+                    let mut cpu = CPU::new();
+
+                    cpu.load(vec![0x69, 0x81, 0x00]);
+                    cpu.reset();
+                    cpu.accumulator = 0x81;
+                    cpu.run();
+
+                    assert_eq!(cpu.accumulator, 0x2);
+                    assert_eq!(
+                        cpu.status
+                            .contains(ProcessorStatus::CARRY | ProcessorStatus::OVERFLOW),
+                        true
+                    )
+                }
+
+                #[test]
+                fn test_adc_occur_overflow_minus_has_carry() {
+                    //計算前にキャリーがあり計算中にオーバーフローが発生して計算結果がプラスの値になる場合
+                    let mut cpu = CPU::new();
+
+                    cpu.load(vec![0x69, 0x6F, 0x00]);
+                    cpu.reset();
+                    cpu.accumulator = 0x10;
+                    cpu.status.insert(ProcessorStatus::CARRY);
+                    cpu.run();
+
+                    assert_eq!(cpu.accumulator, 0x80);
+                    assert_eq!(
+                        cpu.status
+                            .contains(ProcessorStatus::NEGATIVE | ProcessorStatus::OVERFLOW),
+                        true
+                    )
+                }
+
+                #[test]
+                fn test_adc_occur_overflow_plus_has_carry() {
+                    //計算前にキャリーがあり計算中にオーバーフローが発生して計算結果がマイナスの値になる場合
+                    let mut cpu = CPU::new();
+
+                    cpu.load(vec![0x69, 0x81, 0x00]);
+                    cpu.reset();
+                    cpu.accumulator = 0x81;
+                    cpu.status.insert(ProcessorStatus::CARRY);
+                    cpu.run();
+
+                    assert_eq!(cpu.accumulator, 0x03);
+                    assert_eq!(
+                        cpu.status
+                            .contains(ProcessorStatus::CARRY | ProcessorStatus::OVERFLOW),
+                        true
+                    )
+                }
+
+                #[test]
+                fn test_adc_no_overflow() {
+                    //オーバーフローなし
+                    let mut cpu = CPU::new();
+
+                    cpu.load(vec![0x69, 0x7F, 0x00]);
+                    cpu.reset();
+                    cpu.accumulator = 0x82;
+                    cpu.run();
+
+                    println!();
+
+                    assert_eq!(cpu.accumulator, 0x01);
+                    assert_eq!(
+                        cpu.status.contains(
+                            ProcessorStatus::CARRY
+                                | ProcessorStatus::OVERFLOW
+                                | ProcessorStatus::NEGATIVE
+                        ),
+                        false
+                    );
+                }
             }
         }
     }
