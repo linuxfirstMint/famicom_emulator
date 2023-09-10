@@ -236,6 +236,13 @@ impl CPU {
         self.update_zero_and_negative_flags(self.accumulator);
     }
 
+    fn ora(&mut self, mode: &AddressingMode) {
+        let value = self.fetch_data(mode);
+        self.accumulator = self.accumulator | value;
+
+        self.update_zero_and_negative_flags(self.accumulator);
+    }
+
     fn status_bit(&self, reg: &ProcessorStatus) -> u8 {
         self.status.bits() & reg.bits()
     }
@@ -281,6 +288,8 @@ impl CPU {
                 SBC => self.sbc(&opcode.mode),
                 AND => self.and(&opcode.mode),
                 EOR => self.eor(&opcode.mode),
+                ORA => self.ora(&opcode.mode),
+
                 BRK => return,
                 _ => todo!(),
             }
@@ -640,7 +649,6 @@ mod tests {
                 }
             }
         }
-
         mod sbc {
             use super::*;
             mod effects {
@@ -815,6 +823,22 @@ mod tests {
                 cpu.run();
 
                 assert_eq!(cpu.accumulator, 0x9E);
+                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
+            }
+        }
+        mod ora {
+            use super::*;
+
+            #[test]
+            fn test_ora() {
+                let mut cpu = CPU::new();
+
+                cpu.load(vec![0x09, 0xF0, 0x00]);
+                cpu.reset();
+                cpu.accumulator = 0x6E;
+                cpu.run();
+
+                assert_eq!(cpu.accumulator, 0xFE);
                 assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
             }
         }
