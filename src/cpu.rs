@@ -222,6 +222,13 @@ impl CPU {
         self.update_zero_and_negative_flags(self.accumulator);
     }
 
+    fn and(&mut self, mode: &AddressingMode) {
+        let value = self.fetch_data(mode);
+        self.accumulator = self.accumulator & value;
+
+        self.update_zero_and_negative_flags(self.accumulator);
+    }
+
     fn status_bit(&self, reg: &ProcessorStatus) -> u8 {
         self.status.bits() & reg.bits()
     }
@@ -265,6 +272,7 @@ impl CPU {
                 INX => self.inx(),
                 ADC => self.adc(&opcode.mode),
                 SBC => self.sbc(&opcode.mode),
+                AND => self.and(&opcode.mode),
                 BRK => return,
                 _ => todo!(),
             }
@@ -768,6 +776,22 @@ mod tests {
                         false
                     );
                 }
+            }
+        }
+        mod and {
+            use super::*;
+
+            #[test]
+            fn test_and() {
+                let mut cpu = CPU::new();
+
+                cpu.load(vec![0x29, 0xF0, 0x00]);
+                cpu.reset();
+                cpu.accumulator = 0x6E;
+                cpu.run();
+
+                assert_eq!(cpu.accumulator, 0x60);
+                assert_eq!(cpu.status.is_empty(), true);
             }
         }
 
