@@ -262,6 +262,25 @@ impl CPU {
         }
     }
 
+    fn lsr(&mut self, mode: &AddressingMode) {
+        let value = self.fetch_data(mode);
+
+        let (shifted_value, _) = value.overflowing_shr(1);
+
+        self.update_zero_and_negative_flags(value);
+
+        self.status
+            .set(ProcessorStatus::CARRY, (value >> 7) & 1 > 0);
+
+        match mode {
+            AddressingMode::Accumulator => self.accumulator = shifted_value,
+            _ => {
+                let addr = self.get_operand_address(mode);
+                self.mem_write(addr, shifted_value)
+            }
+        }
+    }
+
     fn status_bit(&self, reg: &ProcessorStatus) -> u8 {
         self.status.bits() & reg.bits()
     }
@@ -312,6 +331,7 @@ impl CPU {
                 EOR => self.eor(&opcode.mode),
                 ORA => self.ora(&opcode.mode),
                 ASL => self.asl(&opcode.mode),
+                LSR => self.lsr(&opcode.mode),
                 BRK => return,
                 _ => todo!(),
             }
@@ -890,6 +910,37 @@ mod tests {
                 cpu.run();
 
                 assert_eq!(cpu.mem_read(0x10), 0b11010100);
+                assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), false);
+                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
+            }
+        }
+        mod lsr {
+            use super::*;
+
+            #[test]
+            fn test_lsr_load_acc() {
+                let mut cpu = CPU::new();
+
+                cpu.load(vec![0x4A, 0x00]);
+                cpu.reset();
+                cpu.accumulator = 0b11101010;
+                cpu.run();
+
+                assert_eq!(cpu.accumulator, 0b01110101);
+                assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
+                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
+            }
+
+            #[test]
+            fn test_lsr_load_mem() {
+                let mut cpu = CPU::new();
+
+                cpu.mem_write(0x10, 0b01101010);
+                cpu.load(vec![0x46, 0x10, 0x00]);
+                cpu.reset();
+                cpu.run();
+
+                assert_eq!(cpu.mem_read(0x10), 0b00110101);
                 assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), false);
                 assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
             }
