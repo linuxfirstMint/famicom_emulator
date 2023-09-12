@@ -243,13 +243,35 @@ impl CPU {
         self.update_zero_and_negative_flags(self.accumulator);
     }
 
+    fn asl(&mut self, mode: &AddressingMode) {
+        let value = self.fetch_data(mode);
+
+        let (shifted_value, _) = value.overflowing_shl(1);
+
+        self.update_zero_and_negative_flags(value);
+
+        self.status
+            .set(ProcessorStatus::CARRY, (value >> 7) & 1 > 0);
+
+        match mode {
+            AddressingMode::Accumulator => self.accumulator = shifted_value,
+            _ => {
+                let addr = self.get_operand_address(mode);
+                self.mem_write(addr, shifted_value)
+            }
+        }
+    }
+
     fn status_bit(&self, reg: &ProcessorStatus) -> u8 {
         self.status.bits() & reg.bits()
     }
 
     fn fetch_data(&self, mode: &AddressingMode) -> u8 {
         let addr = self.get_operand_address(mode);
-        self.mem_read(addr)
+        match mode {
+            AddressingMode::Accumulator => return addr as u8,
+            _ => self.mem_read(addr),
+        }
     }
 
     fn update_zero_and_negative_flags(&mut self, result: u8) {
@@ -289,7 +311,7 @@ impl CPU {
                 AND => self.and(&opcode.mode),
                 EOR => self.eor(&opcode.mode),
                 ORA => self.ora(&opcode.mode),
-
+                ASL => self.asl(&opcode.mode),
                 BRK => return,
                 _ => todo!(),
             }
@@ -300,7 +322,6 @@ impl CPU {
         }
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -840,6 +861,37 @@ mod tests {
 
                 assert_eq!(cpu.accumulator, 0xFE);
                 assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
+            }
+        }
+        mod asl {
+            use super::*;
+
+            #[test]
+            fn test_asl_load_acc() {
+                let mut cpu = CPU::new();
+
+                cpu.load(vec![0x0A, 0x00]);
+                cpu.reset();
+                cpu.accumulator = 0b11101010;
+                cpu.run();
+
+                assert_eq!(cpu.accumulator, 0b11010100);
+                assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
+                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
+            }
+
+            #[test]
+            fn test_asl_load_mem() {
+                let mut cpu = CPU::new();
+
+                cpu.mem_write(0x10, 0b01101010);
+                cpu.load(vec![0x06, 0x10, 0x00]);
+                cpu.reset();
+                cpu.run();
+
+                assert_eq!(cpu.mem_read(0x10), 0b11010100);
+                assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), false);
+                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
             }
         }
 
