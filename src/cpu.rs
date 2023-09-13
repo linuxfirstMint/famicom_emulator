@@ -3,6 +3,7 @@ use bitflags::bitflags;
 use std::collections::HashMap;
 
 bitflags! {
+    #[derive(Clone,Copy)]
     pub struct ProcessorStatus: u8 {
         const CARRY = 1;
         const ZERO = 1 << 1;
@@ -327,6 +328,14 @@ impl CPU {
         }
     }
 
+    fn branch(&mut self, mode: &AddressingMode, status: &ProcessorStatus, condition: bool) {
+        let addr = self.get_operand_address(mode) as i8;
+
+        if self.status.contains(*status) == condition {
+            self.program_counter = self.program_counter.wrapping_add_signed(addr.into())
+        }
+    }
+
     fn status_bit(&self, reg: &ProcessorStatus) -> u8 {
         self.status.bits() & reg.bits()
     }
@@ -381,6 +390,11 @@ impl CPU {
                 ROL => self.rol(&opcode.mode),
                 ROR => self.ror(&opcode.mode),
                 BRK => return,
+                BCC | BCS => self.branch(
+                    &opcode.mode,
+                    &ProcessorStatus::CARRY,
+                    self.status.intersects(ProcessorStatus::CARRY),
+                ),
                 _ => todo!(),
             }
 
@@ -1055,7 +1069,33 @@ mod tests {
                 assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
             }
         }
+        mod branch {
+            use super::*;
+            mod bcc {
+                use super::*;
+                #[test]
+                fn test_bcc() {
+                    let mut cpu = CPU::new();
+                    cpu.load_and_run(vec![0x90, 0x02, 0x00, 0x00, 0x00]);
+                    assert_eq!(cpu.program_counter, 0x8005);
+                }
+            }
+            mod bcs {
+                use super::*;
 
+                #[test]
+                fn test_bcs() {
+                    let mut cpu = CPU::new();
+                    cpu.load(vec![0xB0, 0x02, 0x00, 0x00, 0x00]);
+                    cpu.reset();
+                    cpu.status.insert(ProcessorStatus::CARRY);
+                    cpu.run();
+
+                    assert_eq!(cpu.program_counter, 0x8005);
+                }
+            }
+        }
+    }
         mod operand_address_tests {
 
             use super::*;
