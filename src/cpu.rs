@@ -408,6 +408,18 @@ impl CPU {
 mod tests {
     use super::*;
 
+    pub fn run<F>(program: Vec<u8>, f: F) -> CPU
+    where
+        F: FnOnce(&mut CPU),
+    {
+        let mut cpu = CPU::new();
+        cpu.load(program);
+        cpu.reset();
+        f(&mut cpu);
+        cpu.run();
+        cpu
+    }
+
     mod opcode_tests {
         use super::*;
 
@@ -1075,8 +1087,8 @@ mod tests {
                 use super::*;
                 #[test]
                 fn test_bcc() {
-                    let mut cpu = CPU::new();
-                    cpu.load_and_run(vec![0x90, 0x02, 0x00, 0x00, 0x00]);
+                    let program = vec![0x90, 0x02, 0x00, 0x00, 0x00];
+                    let cpu = run(program, |_| {});
                     assert_eq!(cpu.program_counter, 0x8005);
                 }
             }
@@ -1085,196 +1097,192 @@ mod tests {
 
                 #[test]
                 fn test_bcs() {
-                    let mut cpu = CPU::new();
-                    cpu.load(vec![0xB0, 0x02, 0x00, 0x00, 0x00]);
-                    cpu.reset();
-                    cpu.status.insert(ProcessorStatus::CARRY);
-                    cpu.run();
+                    let program = vec![0xB0, 0x02, 0x00, 0x00, 0x00];
+                    let cpu = run(program, |cpu| cpu.status.insert(ProcessorStatus::CARRY));
 
                     assert_eq!(cpu.program_counter, 0x8005);
                 }
             }
         }
     }
-        mod operand_address_tests {
+    mod operand_address_tests {
 
-            use super::*;
+        use super::*;
 
-            #[test]
-            fn test_get_operand_address() {
-                let mut cpu = CPU::new();
-                cpu.program_counter = 0x90;
-                let mut mode = AddressingMode::Immediate;
-                let mut effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(
-                    effective_address, cpu.program_counter,
-                    "オペランドアドレスがプログラムカウンタと一致していません"
+        #[test]
+        fn test_get_operand_address() {
+            let mut cpu = CPU::new();
+            cpu.program_counter = 0x90;
+            let mut mode = AddressingMode::Immediate;
+            let mut effective_address = cpu.get_operand_address(&mode);
+            assert_eq!(
+                effective_address, cpu.program_counter,
+                "オペランドアドレスがプログラムカウンタと一致していません"
+            );
+
+            cpu.reset();
+            cpu.memory[cpu.program_counter as usize] = 0x44;
+            mode = AddressingMode::ZeroPage;
+            effective_address = cpu.get_operand_address(&mode);
+            assert_eq!(effective_address, 0x44);
+
+            cpu.reset();
+            mode = AddressingMode::ZeroPage;
+            for address in 0x00..=0xFF {
+                cpu.memory[cpu.program_counter as usize] = address;
+                effective_address = cpu.get_operand_address(&mode);
+                assert_eq!(effective_address, address as u16);
+            }
+
+            cpu.reset();
+            cpu.memory[cpu.program_counter as usize] = 0x44;
+            cpu.index_register_x = 0x10;
+            mode = AddressingMode::ZeroPage_X;
+            effective_address = cpu.get_operand_address(&mode);
+            assert_eq!(effective_address, 0x54);
+
+            cpu.reset();
+            cpu.index_register_y = 0x02;
+            cpu.memory[cpu.program_counter as usize] = 0x50;
+            mode = AddressingMode::ZeroPage_Y;
+            effective_address = cpu.get_operand_address(&mode);
+            assert_eq!(effective_address, 0x52);
+
+            cpu.reset();
+            cpu.memory[cpu.program_counter as usize] = 0x80;
+            cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0x49;
+            mode = AddressingMode::Absolute;
+            effective_address = cpu.get_operand_address(&mode);
+            assert_eq!(effective_address, 0x4980);
+
+            cpu.reset();
+            cpu.index_register_x = 0x20;
+            cpu.memory[cpu.program_counter as usize] = 0x30;
+            cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0x98;
+            mode = AddressingMode::Absolute_X;
+            effective_address = cpu.get_operand_address(&mode);
+            assert_eq!(effective_address, 0x9850);
+
+            cpu.reset();
+            cpu.index_register_y = 0x42;
+            cpu.memory[cpu.program_counter as usize] = 0x50;
+            cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0xE0;
+            mode = AddressingMode::Absolute_Y;
+            effective_address = cpu.get_operand_address(&mode);
+            assert_eq!(effective_address, 0xE092);
+
+            cpu.reset();
+            cpu.memory[cpu.program_counter as usize] = 0x22;
+            cpu.memory[0x22] = 0x50;
+            cpu.memory[0x23] = 0xAC;
+            mode = AddressingMode::Indirect;
+            effective_address = cpu.get_operand_address(&mode);
+            assert_eq!(effective_address, 0xAC50);
+
+            cpu.reset();
+            cpu.memory[cpu.program_counter as usize] = 0x40;
+            cpu.index_register_x = 0x05;
+            cpu.memory[0x45] = 0x10;
+            cpu.memory[0x46] = 0x09;
+            mode = AddressingMode::Indirect_X;
+            effective_address = cpu.get_operand_address(&mode);
+            assert_eq!(effective_address, 0x0910);
+
+            cpu.reset();
+            cpu.memory[cpu.program_counter as usize] = 0xA0;
+            cpu.index_register_y = 0x05;
+            cpu.memory[0xA0] = 0x50;
+            cpu.memory[0xA1] = 0xB2;
+            mode = AddressingMode::Indirect_Y;
+            effective_address = cpu.get_operand_address(&mode);
+            assert_eq!(effective_address, 0xB255);
+
+            cpu.reset();
+            cpu.memory[cpu.program_counter as usize] = 0x60;
+            mode = AddressingMode::Relative;
+            effective_address = cpu.get_operand_address(&mode);
+            assert_eq!(effective_address, 0x60);
+
+            cpu.reset();
+            cpu.accumulator = 0x42;
+            mode = AddressingMode::Accumulator;
+            effective_address = cpu.get_operand_address(&mode);
+            assert_eq!(effective_address, 0x42);
+
+            cpu.reset();
+            mode = AddressingMode::Implicit;
+            effective_address = cpu.get_operand_address(&mode);
+            assert_eq!(effective_address, 0);
+        }
+    }
+
+    mod memory_access {
+
+        use super::*;
+
+        #[test]
+        fn test_mem_read_write() {
+            let mut cpu = CPU::new();
+
+            cpu.mem_write(0x8000, 0xAB);
+            cpu.mem_write(0x8001, 0xCD);
+
+            let data1 = cpu.mem_read(0x8000);
+            let data2 = cpu.mem_read(0x8001);
+
+            assert_eq!(data1, 0xAB);
+            assert_eq!(data2, 0xCD);
+        }
+
+        #[test]
+        fn test_mem_read_write_u16() {
+            let mut cpu = CPU::new();
+            cpu.mem_write_u16(0x8000, 0xABCD);
+            let value = cpu.mem_read_u16(0x8000);
+            assert_eq!(value, 0xABCD)
+        }
+    }
+
+    mod cpu_instruction_tests {
+
+        use super::*;
+
+        #[test]
+        fn test_load() {
+            let mut cpu = CPU::new();
+            let program: Vec<u8> = vec![0x01, 0x02, 0x03];
+            cpu.load(program.clone());
+
+            for (i, &byte) in program.iter().enumerate() {
+                let memory_index = 0x8000 + i;
+                assert!(
+                    memory_index < cpu.memory.len(),
+                    "Memory index out of range: 0x{:X}",
+                    memory_index
                 );
-
-                cpu.reset();
-                cpu.memory[cpu.program_counter as usize] = 0x44;
-                mode = AddressingMode::ZeroPage;
-                effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(effective_address, 0x44);
-
-                cpu.reset();
-                mode = AddressingMode::ZeroPage;
-                for address in 0x00..=0xFF {
-                    cpu.memory[cpu.program_counter as usize] = address;
-                    effective_address = cpu.get_operand_address(&mode);
-                    assert_eq!(effective_address, address as u16);
-                }
-
-                cpu.reset();
-                cpu.memory[cpu.program_counter as usize] = 0x44;
-                cpu.index_register_x = 0x10;
-                mode = AddressingMode::ZeroPage_X;
-                effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(effective_address, 0x54);
-
-                cpu.reset();
-                cpu.index_register_y = 0x02;
-                cpu.memory[cpu.program_counter as usize] = 0x50;
-                mode = AddressingMode::ZeroPage_Y;
-                effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(effective_address, 0x52);
-
-                cpu.reset();
-                cpu.memory[cpu.program_counter as usize] = 0x80;
-                cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0x49;
-                mode = AddressingMode::Absolute;
-                effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(effective_address, 0x4980);
-
-                cpu.reset();
-                cpu.index_register_x = 0x20;
-                cpu.memory[cpu.program_counter as usize] = 0x30;
-                cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0x98;
-                mode = AddressingMode::Absolute_X;
-                effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(effective_address, 0x9850);
-
-                cpu.reset();
-                cpu.index_register_y = 0x42;
-                cpu.memory[cpu.program_counter as usize] = 0x50;
-                cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0xE0;
-                mode = AddressingMode::Absolute_Y;
-                effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(effective_address, 0xE092);
-
-                cpu.reset();
-                cpu.memory[cpu.program_counter as usize] = 0x22;
-                cpu.memory[0x22] = 0x50;
-                cpu.memory[0x23] = 0xAC;
-                mode = AddressingMode::Indirect;
-                effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(effective_address, 0xAC50);
-
-                cpu.reset();
-                cpu.memory[cpu.program_counter as usize] = 0x40;
-                cpu.index_register_x = 0x05;
-                cpu.memory[0x45] = 0x10;
-                cpu.memory[0x46] = 0x09;
-                mode = AddressingMode::Indirect_X;
-                effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(effective_address, 0x0910);
-
-                cpu.reset();
-                cpu.memory[cpu.program_counter as usize] = 0xA0;
-                cpu.index_register_y = 0x05;
-                cpu.memory[0xA0] = 0x50;
-                cpu.memory[0xA1] = 0xB2;
-                mode = AddressingMode::Indirect_Y;
-                effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(effective_address, 0xB255);
-
-                cpu.reset();
-                cpu.memory[cpu.program_counter as usize] = 0x60;
-                mode = AddressingMode::Relative;
-                effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(effective_address, 0x60);
-
-                cpu.reset();
-                cpu.accumulator = 0x42;
-                mode = AddressingMode::Accumulator;
-                effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(effective_address, 0x42);
-
-                cpu.reset();
-                mode = AddressingMode::Implicit;
-                effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(effective_address, 0);
+                assert_eq!(cpu.memory[memory_index], byte);
             }
+            assert_eq!(cpu.program_counter, 0);
         }
 
-        mod memory_access {
-
-            use super::*;
-
-            #[test]
-            fn test_mem_read_write() {
-                let mut cpu = CPU::new();
-
-                cpu.mem_write(0x8000, 0xAB);
-                cpu.mem_write(0x8001, 0xCD);
-
-                let data1 = cpu.mem_read(0x8000);
-                let data2 = cpu.mem_read(0x8001);
-
-                assert_eq!(data1, 0xAB);
-                assert_eq!(data2, 0xCD);
-            }
-
-            #[test]
-            fn test_mem_read_write_u16() {
-                let mut cpu = CPU::new();
-                cpu.mem_write_u16(0x8000, 0xABCD);
-                let value = cpu.mem_read_u16(0x8000);
-                assert_eq!(value, 0xABCD)
-            }
+        #[test]
+        fn test_reset() {
+            let mut cpu = CPU::new();
+            cpu.accumulator = 1;
+            cpu.index_register_x = 1;
+            cpu.status.insert(ProcessorStatus::NEGATIVE);
+            cpu.reset();
+            assert_eq!(cpu.accumulator, 0);
+            assert_eq!(cpu.index_register_x, 0);
+            assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
         }
 
-        mod cpu_instruction_tests {
+        #[test]
+        fn test_5_ops_working_together() {
+            let mut cpu = CPU::new();
+            cpu.load_and_run(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]);
 
-            use super::*;
-
-            #[test]
-            fn test_load() {
-                let mut cpu = CPU::new();
-                let program: Vec<u8> = vec![0x01, 0x02, 0x03];
-                cpu.load(program.clone());
-
-                for (i, &byte) in program.iter().enumerate() {
-                    let memory_index = 0x8000 + i;
-                    assert!(
-                        memory_index < cpu.memory.len(),
-                        "Memory index out of range: 0x{:X}",
-                        memory_index
-                    );
-                    assert_eq!(cpu.memory[memory_index], byte);
-                }
-                assert_eq!(cpu.program_counter, 0);
-            }
-
-            #[test]
-            fn test_reset() {
-                let mut cpu = CPU::new();
-                cpu.accumulator = 1;
-                cpu.index_register_x = 1;
-                cpu.status.insert(ProcessorStatus::NEGATIVE);
-                cpu.reset();
-                assert_eq!(cpu.accumulator, 0);
-                assert_eq!(cpu.index_register_x, 0);
-                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
-            }
-
-            #[test]
-            fn test_5_ops_working_together() {
-                let mut cpu = CPU::new();
-                cpu.load_and_run(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]);
-
-                assert_eq!(cpu.index_register_x, 0xc1)
-            }
+            assert_eq!(cpu.index_register_x, 0xc1)
         }
     }
 }
