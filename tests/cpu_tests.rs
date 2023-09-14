@@ -759,6 +759,40 @@ mod tests {
                 }
             }
         }
+        mod bit {
+            use super::*;
+
+            #[test]
+            fn test_bit() {
+                let mut cpu = run(vec![0x24, 0x81, 0x00], |cpu| {
+                    cpu.mem_write(0x81, 0x60);
+                    cpu.accumulator = 0x70;
+                });
+
+                assert_eq!(cpu.accumulator, 0x70);
+                assert_eq!(cpu.mem_read(0x81), 0x60);
+                assert_eq!(
+                    cpu.status.contains(
+                        ProcessorStatus::ZERO
+                            | ProcessorStatus::OVERFLOW
+                            | ProcessorStatus::NEGATIVE
+                    ),
+                    true
+                );
+
+                cpu = run(vec![0x24, 0x81, 0x00], |cpu| {
+                    cpu.mem_write(0x81, 0x60);
+                    cpu.accumulator = 0x90;
+                });
+
+                assert_eq!(cpu.status.contains(ProcessorStatus::ZERO), false);
+                assert_eq!(
+                    cpu.status
+                        .contains(ProcessorStatus::OVERFLOW | ProcessorStatus::NEGATIVE),
+                    true
+                );
+            }
+        }
     }
     mod operand_address_tests {
 

@@ -336,6 +336,16 @@ impl CPU {
         }
     }
 
+    fn bit(&mut self, mode: &AddressingMode) {
+        let value = self.fetch_data(mode);
+
+        self.status
+            .set(ProcessorStatus::ZERO, self.accumulator & value as u8 != 0);
+        self.status
+            .set(ProcessorStatus::OVERFLOW, (value >> 5) << 1 != 0);
+        self.status.set(ProcessorStatus::NEGATIVE, value >> 6 != 0);
+    }
+
     fn status_bit(&self, reg: &ProcessorStatus) -> u8 {
         self.status.bits() & reg.bits()
     }
@@ -410,6 +420,7 @@ impl CPU {
                     &ProcessorStatus::NEGATIVE,
                     self.status.intersects(ProcessorStatus::NEGATIVE),
                 ),
+                BIT => self.bit(&opcode.mode),
                 _ => todo!(),
             }
 
