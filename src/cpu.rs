@@ -395,6 +395,21 @@ impl CPU {
                     &ProcessorStatus::CARRY,
                     self.status.intersects(ProcessorStatus::CARRY),
                 ),
+                BNE | BEQ => self.branch(
+                    &opcode.mode,
+                    &ProcessorStatus::ZERO,
+                    self.status.intersects(ProcessorStatus::ZERO),
+                ),
+                BVC | BVS => self.branch(
+                    &opcode.mode,
+                    &ProcessorStatus::OVERFLOW,
+                    self.status.intersects(ProcessorStatus::OVERFLOW),
+                ),
+                BPL | BMI => self.branch(
+                    &opcode.mode,
+                    &ProcessorStatus::NEGATIVE,
+                    self.status.intersects(ProcessorStatus::NEGATIVE),
+                ),
                 _ => todo!(),
             }
 
