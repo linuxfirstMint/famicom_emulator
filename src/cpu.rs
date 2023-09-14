@@ -405,6 +405,11 @@ impl CPU {
                     &ProcessorStatus::OVERFLOW,
                     self.status.intersects(ProcessorStatus::OVERFLOW),
                 ),
+                BPL | BMI => self.branch(
+                    &opcode.mode,
+                    &ProcessorStatus::NEGATIVE,
+                    self.status.intersects(ProcessorStatus::NEGATIVE),
+                ),
                 _ => todo!(),
             }
 

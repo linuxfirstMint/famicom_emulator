@@ -735,6 +735,29 @@ mod tests {
                     assert_eq!(cpu.index_register_x, 0x1);
                 }
             }
+            mod bpl {
+                use super::*;
+
+                #[test]
+                fn test_bvs() {
+                    let program = vec![0x10, 0x03, 0x00, 0x00, 0x00, 0xE8, 0x00];
+                    let cpu = run(program, |_| {});
+                    assert_eq!(cpu.program_counter, 0x8007);
+                    assert_eq!(cpu.index_register_x, 0x01);
+                }
+            }
+            mod bmi {
+                use super::*;
+
+                #[test]
+                fn test_bmi() {
+                    let program = vec![0x10, 0x03, 0x00, 0x00, 0x00, 0xE8, 0x00];
+                    let cpu = run(program, |cpu| cpu.status.insert(ProcessorStatus::NEGATIVE));
+
+                    assert_eq!(cpu.program_counter, 0x8007);
+                    assert_eq!(cpu.index_register_x, 0x01);
+                }
+            }
         }
     }
     mod operand_address_tests {
