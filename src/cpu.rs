@@ -400,6 +400,11 @@ impl CPU {
                     &ProcessorStatus::ZERO,
                     self.status.intersects(ProcessorStatus::ZERO),
                 ),
+                BVC | BVS => self.branch(
+                    &opcode.mode,
+                    &ProcessorStatus::OVERFLOW,
+                    self.status.intersects(ProcessorStatus::OVERFLOW),
+                ),
                 _ => todo!(),
             }
 

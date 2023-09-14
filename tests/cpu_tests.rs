@@ -711,6 +711,30 @@ mod tests {
                     assert_eq!(cpu.index_register_x, 0x1);
                 }
             }
+            mod bvc {
+                use super::*;
+
+                #[test]
+                fn test_bvc() {
+                    let program = vec![0xD0, 0x04, 0x00, 0x00, 0x00, 0x00, 0xE8, 0x00];
+                    let cpu = run(program, |_| {});
+
+                    assert_eq!(cpu.program_counter, 0x8008);
+                    assert_eq!(cpu.index_register_x, 0x1);
+                }
+            }
+            mod bvs {
+                use super::*;
+
+                #[test]
+                fn test_bvs() {
+                    let program = vec![0xD0, 0x04, 0x00, 0x00, 0x00, 0x00, 0xE8, 0x00];
+                    let cpu = run(program, |cpu| cpu.status.insert(ProcessorStatus::OVERFLOW));
+
+                    assert_eq!(cpu.program_counter, 0x8008);
+                    assert_eq!(cpu.index_register_x, 0x1);
+                }
+            }
         }
     }
     mod operand_address_tests {
