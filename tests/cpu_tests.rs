@@ -687,6 +687,30 @@ mod tests {
                     assert_eq!(cpu.program_counter, 0x8005);
                 }
             }
+            mod bne {
+                use super::*;
+
+                #[test]
+                fn test_bne() {
+                    let program = vec![0xD0, 0x03, 0x00, 0x00, 0x00, 0xE8, 0x00];
+                    let cpu = run(program, |_| {});
+
+                    assert_eq!(cpu.program_counter, 0x8007);
+                    assert_eq!(cpu.index_register_x, 0x1);
+                }
+            }
+            mod beq {
+                use super::*;
+
+                #[test]
+                fn test_beq() {
+                    let program = vec![0xD0, 0x03, 0x00, 0x00, 0x00, 0xE8, 0x00];
+                    let cpu = run(program, |cpu| cpu.status.insert(ProcessorStatus::ZERO));
+
+                    assert_eq!(cpu.program_counter, 0x8007);
+                    assert_eq!(cpu.index_register_x, 0x1);
+                }
+            }
         }
     }
     mod operand_address_tests {

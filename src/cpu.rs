@@ -395,6 +395,11 @@ impl CPU {
                     &ProcessorStatus::CARRY,
                     self.status.intersects(ProcessorStatus::CARRY),
                 ),
+                BNE | BEQ => self.branch(
+                    &opcode.mode,
+                    &ProcessorStatus::ZERO,
+                    self.status.intersects(ProcessorStatus::ZERO),
+                ),
                 _ => todo!(),
             }
 
