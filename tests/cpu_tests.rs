@@ -869,7 +869,162 @@ mod tests {
                 }
             }
         }
+        mod cmp {
+            use super::*;
+            mod cmp {
+                use super::*;
+
+                #[test]
+                fn test_cmp_greater_than_or_eq() {
+                    let cpu = run(vec![0xC9, 0x10, 0x00], |cpu| {
+                        cpu.accumulator = 0x50;
+                    });
+
+                    // accumulator > memory
+                    assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
+                    assert_eq!(
+                        cpu.status
+                            .contains(ProcessorStatus::ZERO | ProcessorStatus::NEGATIVE),
+                        false
+                    );
+                }
+                #[test]
+                fn test_cmp_eq() {
+                    let cpu = run(vec![0xC9, 0x50, 0x00], |cpu| {
+                        cpu.accumulator = 0x50;
+                    });
+
+                    // accumulator = memory
+                    assert_eq!(
+                        cpu.status
+                            .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
+                        true
+                    );
+                    assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
+                }
+                #[test]
+                fn test_cmp_less_than() {
+                    // accumulator < memory
+                    let cpu = run(vec![0xC9, 0xB8, 0x00], |cpu| {
+                        cpu.accumulator = 0x10;
+                        cpu.mem_write(0xB8, 0x50);
+                    });
+
+                    assert_eq!(
+                        cpu.status.contains(
+                            ProcessorStatus::CARRY
+                                | ProcessorStatus::ZERO
+                                | ProcessorStatus::NEGATIVE
+                        ),
+                        false
+                    );
+                    assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
+                }
+
+                mod cpx {
+                    use super::*;
+
+                    #[test]
+                    fn test_cpx_greater_than_or_eq() {
+                        let cpu = run(vec![0xE0, 0x10, 0x00], |cpu| {
+                            cpu.index_register_x = 0x50;
+                        });
+
+                        // index X > memory
+                        assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
+                        assert_eq!(
+                            cpu.status
+                                .contains(ProcessorStatus::ZERO | ProcessorStatus::NEGATIVE),
+                            false
+                        );
+                    }
+                    #[test]
+                    fn test_cpx_eq() {
+                        let cpu = run(vec![0xE0, 0x50, 0x00], |cpu| {
+                            cpu.index_register_x = 0x50;
+                        });
+
+                        // index X = memory
+                        assert_eq!(
+                            cpu.status
+                                .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
+                            true
+                        );
+                        assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
+                    }
+                    #[test]
+                    fn test_cpx_less_than() {
+                        // index X < memory
+                        let cpu = run(vec![0xE0, 0xB8, 0x00], |cpu| {
+                            cpu.index_register_x = 0x10;
+                            cpu.mem_write(0xB8, 0x50);
+                        });
+
+                        assert_eq!(
+                            cpu.status.contains(
+                                ProcessorStatus::CARRY
+                                    | ProcessorStatus::ZERO
+                                    | ProcessorStatus::NEGATIVE
+                            ),
+                            false
+                        );
+                        assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
+                    }
+                }
+                mod cpy {
+                    use super::*;
+
+                    #[test]
+                    fn test_cpy_greater_than_or_eq() {
+                        let cpu = run(vec![0xC0, 0x10, 0x00], |cpu| {
+                            cpu.index_register_y = 0x50;
+                        });
+
+                        // index Y > memory
+                        assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
+                        assert_eq!(
+                            cpu.status
+                                .contains(ProcessorStatus::ZERO | ProcessorStatus::NEGATIVE),
+                            false
+                        );
+                    }
+                    #[test]
+                    fn test_cpy_eq() {
+                        let cpu = run(vec![0xC0, 0x50, 0x00], |cpu| {
+                            cpu.index_register_y = 0x50;
+                        });
+
+                        // index Y = memory
+                        assert_eq!(
+                            cpu.status
+                                .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
+                            true
+                        );
+                        assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
+                    }
+                    #[test]
+                    fn test_cpy_less_than() {
+                        // index Y < memory
+                        let cpu = run(vec![0xC0, 0xB8, 0x00], |cpu| {
+                            cpu.index_register_y = 0x10;
+                            cpu.mem_write(0xB8, 0x50);
+                        });
+
+                        assert_eq!(
+                            cpu.status.contains(
+                                ProcessorStatus::CARRY
+                                    | ProcessorStatus::ZERO
+                                    | ProcessorStatus::NEGATIVE
+                            ),
+                            false
+                        );
+                        assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
+                    }
+                }
+            }
+        }
     }
+
     mod operand_address_tests {
 
         use super::*;
