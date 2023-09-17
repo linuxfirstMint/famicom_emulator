@@ -423,6 +423,8 @@ impl CPU {
                 BIT => self.bit(&opcode.mode),
                 CLC => self.status.set(ProcessorStatus::CARRY, false),
                 SEC => self.status.set(ProcessorStatus::CARRY, true),
+                CLI => self.status.set(ProcessorStatus::INTERRUPT_DISABLE, false),
+                SEI => self.status.set(ProcessorStatus::INTERRUPT_DISABLE, true),
                 _ => todo!(),
             }
 

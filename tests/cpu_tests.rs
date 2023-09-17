@@ -760,7 +760,6 @@ mod tests {
             }
         }
         mod bit {
-
             use super::*;
 
             #[test]
@@ -813,6 +812,30 @@ mod tests {
                     });
 
                     assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
+                }
+            }
+            mod interrupt_disable {
+                use super::*;
+
+                #[test]
+                fn test_interrupt_disable() {
+                    let mut cpu = run(vec![0x58, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::INTERRUPT_DISABLE, true)
+                    });
+
+                    assert_eq!(
+                        cpu.status.contains(ProcessorStatus::INTERRUPT_DISABLE),
+                        false
+                    );
+
+                    cpu = run(vec![0x78, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::INTERRUPT_DISABLE, false)
+                    });
+
+                    assert_eq!(
+                        cpu.status.contains(ProcessorStatus::INTERRUPT_DISABLE),
+                        true
+                    );
                 }
             }
         }
