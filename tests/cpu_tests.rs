@@ -760,6 +760,7 @@ mod tests {
             }
         }
         mod bit {
+
             use super::*;
 
             #[test]
@@ -791,6 +792,28 @@ mod tests {
                         .contains(ProcessorStatus::OVERFLOW | ProcessorStatus::NEGATIVE),
                     true
                 );
+            }
+        }
+        mod flag {
+            use super::*;
+
+            mod carry {
+                use super::*;
+
+                #[test]
+                fn test_carry() {
+                    let mut cpu = run(vec![0x18, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::CARRY, true)
+                    });
+
+                    assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), false);
+
+                    cpu = run(vec![0x38, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::CARRY, false)
+                    });
+
+                    assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
+                }
             }
         }
     }

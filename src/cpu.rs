@@ -421,6 +421,8 @@ impl CPU {
                     self.status.intersects(ProcessorStatus::NEGATIVE),
                 ),
                 BIT => self.bit(&opcode.mode),
+                CLC => self.status.set(ProcessorStatus::CARRY, false),
+                SEC => self.status.set(ProcessorStatus::CARRY, true),
                 _ => todo!(),
             }
 
