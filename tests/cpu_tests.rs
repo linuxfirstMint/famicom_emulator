@@ -1051,8 +1051,28 @@ mod tests {
                 assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
             }
         }
-    }
 
+        mod increment {
+            use super::*;
+
+            #[test]
+            fn test_inc_memory() {
+                let cpu = run(vec![0xE6, 0x20, 0x00], |cpu| {
+                    cpu.mem_write(0x20, 0x70);
+                });
+                assert_eq!(cpu.mem_read(0x20), 0x71);
+                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
+            }
+            #[test]
+            fn test_inc_index_y() {
+                let cpu = run(vec![0xC8, 0x00], |cpu| {
+                    cpu.index_register_y = 0x70;
+                });
+                assert_eq!(cpu.index_register_y, 0x71);
+                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
+            }
+        }
+    }
     mod operand_address_tests {
 
         use super::*;
