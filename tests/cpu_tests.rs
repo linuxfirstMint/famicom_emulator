@@ -838,6 +838,24 @@ mod tests {
                     );
                 }
             }
+            mod decimal_mode {
+                use super::*;
+
+                #[test]
+                fn test_decimal_mode() {
+                    let mut cpu = run(vec![0xD8, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::DECIMAL, true)
+                    });
+
+                    assert_eq!(cpu.status.contains(ProcessorStatus::DECIMAL), false);
+
+                    cpu = run(vec![0xF8, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::DECIMAL, false)
+                    });
+
+                    assert_eq!(cpu.status.contains(ProcessorStatus::DECIMAL), true);
+                }
+            }
         }
     }
     mod operand_address_tests {

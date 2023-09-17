@@ -425,6 +425,8 @@ impl CPU {
                 SEC => self.status.set(ProcessorStatus::CARRY, true),
                 CLI => self.status.set(ProcessorStatus::INTERRUPT_DISABLE, false),
                 SEI => self.status.set(ProcessorStatus::INTERRUPT_DISABLE, true),
+                CLD => self.status.set(ProcessorStatus::DECIMAL, false),
+                SED => self.status.set(ProcessorStatus::DECIMAL, true),
                 _ => todo!(),
             }
 
