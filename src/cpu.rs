@@ -350,6 +350,16 @@ impl CPU {
         self.status.bits() & reg.bits()
     }
 
+    fn compare(&mut self, mode: &AddressingMode, register: u8) {
+        let value = self.fetch_data(mode);
+
+        if register >= value {
+            self.status.insert(ProcessorStatus::CARRY);
+        }
+
+        self.update_zero_and_negative_flags(register.wrapping_sub(value))
+    }
+
     fn fetch_data(&self, mode: &AddressingMode) -> u8 {
         let addr = self.get_operand_address(mode);
         match mode {
@@ -428,6 +438,9 @@ impl CPU {
                 CLD => self.status.remove(ProcessorStatus::DECIMAL),
                 SED => self.status.insert(ProcessorStatus::DECIMAL),
                 CLV => self.status.remove(ProcessorStatus::OVERFLOW),
+                CMP => self.compare(&opcode.mode, self.accumulator),
+                CPX => self.compare(&opcode.mode, self.index_register_x),
+                CPY => self.compare(&opcode.mode, self.index_register_y),
                 _ => todo!(),
             }
 
