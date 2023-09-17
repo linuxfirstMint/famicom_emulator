@@ -187,6 +187,24 @@ impl CPU {
         self.update_zero_and_negative_flags(self.index_register_x)
     }
 
+    fn dec(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        let decremented_value = value.wrapping_sub(1);
+        self.mem_write(addr, decremented_value);
+        self.update_zero_and_negative_flags(decremented_value);
+    }
+
+    fn dex(&mut self) {
+        self.index_register_x = self.index_register_x.wrapping_sub(1);
+        self.update_zero_and_negative_flags(self.index_register_x)
+    }
+
+    fn dey(&mut self) {
+        self.index_register_y = self.index_register_y.wrapping_sub(1);
+        self.update_zero_and_negative_flags(self.index_register_y)
+    }
+
     fn adc(&mut self, mode: &AddressingMode) {
         let value = self.fetch_data(mode);
         let acc = self.accumulator;
@@ -400,6 +418,9 @@ impl CPU {
                 }
                 TAX => self.tax(),
                 INX => self.inx(),
+                DEC => self.dec(&opcode.mode),
+                DEX => self.dex(),
+                DEY => self.dey(),
                 ADC => self.adc(&opcode.mode),
                 SBC => self.sbc(&opcode.mode),
                 AND => self.and(&opcode.mode),
