@@ -793,6 +793,82 @@ mod tests {
                 );
             }
         }
+        mod flag {
+            use super::*;
+
+            mod carry {
+                use super::*;
+
+                #[test]
+                fn test_carry() {
+                    let mut cpu = run(vec![0x18, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::CARRY, true)
+                    });
+
+                    assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), false);
+
+                    cpu = run(vec![0x38, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::CARRY, false)
+                    });
+
+                    assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
+                }
+            }
+            mod interrupt_disable {
+                use super::*;
+
+                #[test]
+                fn test_interrupt_disable() {
+                    let mut cpu = run(vec![0x58, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::INTERRUPT_DISABLE, true)
+                    });
+
+                    assert_eq!(
+                        cpu.status.contains(ProcessorStatus::INTERRUPT_DISABLE),
+                        false
+                    );
+
+                    cpu = run(vec![0x78, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::INTERRUPT_DISABLE, false)
+                    });
+
+                    assert_eq!(
+                        cpu.status.contains(ProcessorStatus::INTERRUPT_DISABLE),
+                        true
+                    );
+                }
+            }
+            mod decimal_mode {
+                use super::*;
+
+                #[test]
+                fn test_decimal_mode() {
+                    let mut cpu = run(vec![0xD8, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::DECIMAL, true)
+                    });
+
+                    assert_eq!(cpu.status.contains(ProcessorStatus::DECIMAL), false);
+
+                    cpu = run(vec![0xF8, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::DECIMAL, false)
+                    });
+
+                    assert_eq!(cpu.status.contains(ProcessorStatus::DECIMAL), true);
+                }
+            }
+            mod overflow {
+                use super::*;
+
+                #[test]
+                fn test_overflow() {
+                    let cpu = run(vec![0xB8, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::OVERFLOW, true)
+                    });
+
+                    assert_eq!(cpu.status.contains(ProcessorStatus::OVERFLOW), false);
+                }
+            }
+        }
     }
     mod operand_address_tests {
 

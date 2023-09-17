@@ -421,6 +421,13 @@ impl CPU {
                     self.status.intersects(ProcessorStatus::NEGATIVE),
                 ),
                 BIT => self.bit(&opcode.mode),
+                CLC => self.status.set(ProcessorStatus::CARRY, false),
+                SEC => self.status.set(ProcessorStatus::CARRY, true),
+                CLI => self.status.set(ProcessorStatus::INTERRUPT_DISABLE, false),
+                SEI => self.status.set(ProcessorStatus::INTERRUPT_DISABLE, true),
+                CLD => self.status.set(ProcessorStatus::DECIMAL, false),
+                SED => self.status.set(ProcessorStatus::DECIMAL, true),
+                CLV => self.status.set(ProcessorStatus::OVERFLOW, false),
                 _ => todo!(),
             }
 
