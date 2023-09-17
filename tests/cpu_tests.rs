@@ -856,6 +856,18 @@ mod tests {
                     assert_eq!(cpu.status.contains(ProcessorStatus::DECIMAL), true);
                 }
             }
+            mod overflow {
+                use super::*;
+
+                #[test]
+                fn test_overflow() {
+                    let cpu = run(vec![0xB8, 0x00], |cpu| {
+                        cpu.status.set(ProcessorStatus::OVERFLOW, true)
+                    });
+
+                    assert_eq!(cpu.status.contains(ProcessorStatus::OVERFLOW), false);
+                }
+            }
         }
     }
     mod operand_address_tests {

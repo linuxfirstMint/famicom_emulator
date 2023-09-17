@@ -427,6 +427,7 @@ impl CPU {
                 SEI => self.status.set(ProcessorStatus::INTERRUPT_DISABLE, true),
                 CLD => self.status.set(ProcessorStatus::DECIMAL, false),
                 SED => self.status.set(ProcessorStatus::DECIMAL, true),
+                CLV => self.status.set(ProcessorStatus::OVERFLOW, false),
                 _ => todo!(),
             }
 
