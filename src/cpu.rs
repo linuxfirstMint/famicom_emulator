@@ -182,9 +182,22 @@ impl CPU {
         self.update_zero_and_negative_flags(self.index_register_x)
     }
 
+    fn inc(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.mem_read(addr);
+        let incremented_value = value.wrapping_add(1);
+        self.mem_write(addr, incremented_value);
+        self.update_zero_and_negative_flags(incremented_value);
+    }
+
     fn inx(&mut self) {
         self.index_register_x = self.index_register_x.wrapping_add(1);
         self.update_zero_and_negative_flags(self.index_register_x)
+    }
+
+    fn iny(&mut self) {
+        self.index_register_y = self.index_register_y.wrapping_add(1);
+        self.update_zero_and_negative_flags(self.index_register_y)
     }
 
     fn dec(&mut self, mode: &AddressingMode) {
@@ -417,7 +430,9 @@ impl CPU {
                     self.lda(&opcode.mode);
                 }
                 TAX => self.tax(),
+                INC => self.inc(&opcode.mode),
                 INX => self.inx(),
+                INY => self.iny(),
                 DEC => self.dec(&opcode.mode),
                 DEX => self.dex(),
                 DEY => self.dey(),
