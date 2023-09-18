@@ -191,6 +191,21 @@ impl CPU {
         self.update_zero_and_negative_flags(self.index_register_y)
     }
 
+    fn sta(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        self.mem_write(addr, self.accumulator);
+    }
+
+    fn stx(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        self.mem_write(addr, self.index_register_x);
+    }
+
+    fn sty(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        self.mem_write(addr, self.index_register_y);
+    }
+
     fn tax(&mut self) {
         self.index_register_x = self.accumulator;
         self.update_zero_and_negative_flags(self.index_register_x)
@@ -440,15 +455,12 @@ impl CPU {
                 .expect(&format!("OpCode: {:x} is not found", code));
 
             match opcode.mnemonic {
-                LDA => {
-                    self.lda(&opcode.mode);
-                }
-                LDX => {
-                    self.ldx(&opcode.mode);
-                }
-                LDY => {
-                    self.ldy(&opcode.mode);
-                }
+                LDA => self.lda(&opcode.mode),
+                LDX => self.ldx(&opcode.mode),
+                LDY => self.ldy(&opcode.mode),
+                STA => self.sta(&opcode.mode),
+                STX => self.stx(&opcode.mode),
+                STY => self.sty(&opcode.mode),
                 TAX => self.tax(),
                 INC => self.inc(&opcode.mode),
                 INX => self.inx(),
