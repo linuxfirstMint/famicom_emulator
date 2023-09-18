@@ -440,15 +440,9 @@ impl CPU {
                 .expect(&format!("OpCode: {:x} is not found", code));
 
             match opcode.mnemonic {
-                LDA => {
-                    self.lda(&opcode.mode);
-                }
-                LDX => {
-                    self.ldx(&opcode.mode);
-                }
-                LDY => {
-                    self.ldy(&opcode.mode);
-                }
+                LDA => self.lda(&opcode.mode),
+                LDX => self.ldx(&opcode.mode),
+                LDY => self.ldy(&opcode.mode),
                 TAX => self.tax(),
                 INC => self.inc(&opcode.mode),
                 INX => self.inx(),
