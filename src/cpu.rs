@@ -211,6 +211,21 @@ impl CPU {
         self.update_zero_and_negative_flags(self.index_register_x)
     }
 
+    fn tay(&mut self) {
+        self.index_register_y = self.accumulator;
+        self.update_zero_and_negative_flags(self.index_register_y)
+    }
+
+    fn tya(&mut self) {
+        self.accumulator = self.index_register_y;
+        self.update_zero_and_negative_flags(self.accumulator)
+    }
+
+    fn txa(&mut self) {
+        self.accumulator = self.index_register_x;
+        self.update_zero_and_negative_flags(self.accumulator)
+    }
+
     fn inc(&mut self, mode: &AddressingMode) {
         let addr = self.get_operand_address(mode);
         let value = self.mem_read(addr);
@@ -462,6 +477,9 @@ impl CPU {
                 STX => self.stx(&opcode.mode),
                 STY => self.sty(&opcode.mode),
                 TAX => self.tax(),
+                TAY => self.tay(),
+                TYA => self.tya(),
+                TXA => self.txa(),
                 INC => self.inc(&opcode.mode),
                 INX => self.inx(),
                 INY => self.iny(),

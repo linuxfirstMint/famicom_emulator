@@ -1128,6 +1128,33 @@ mod tests {
                 assert_eq!(cpu.mem_read(0xF0), cpu.index_register_y);
             }
         }
+        mod transfer {
+            use super::*;
+
+            #[test]
+            fn test_accumlator_to_register_y() {
+                let cpu = run(vec![0xA8, 0x00], |cpu| {
+                    cpu.accumulator = 0x90;
+                });
+                assert_eq!(cpu.index_register_y, cpu.accumulator);
+            }
+
+            #[test]
+            fn test_register_y_to_accumlator() {
+                let cpu = run(vec![0xA8, 0x00], |cpu| {
+                    cpu.index_register_y = 0x90;
+                });
+                assert_eq!(cpu.accumulator, cpu.index_register_y);
+            }
+
+            #[test]
+            fn test_register_x_to_accumlator() {
+                let cpu = run(vec![0x8A, 0x00], |cpu| {
+                    cpu.index_register_x = 0x90;
+                });
+                assert_eq!(cpu.accumulator, cpu.index_register_x);
+            }
+        }
     }
     mod operand_address_tests {
 
