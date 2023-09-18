@@ -1095,6 +1095,39 @@ mod tests {
                 assert_eq!(cpu.index_register_y, 0x10);
             }
         }
+        mod store {
+            use super::*;
+
+            #[test]
+            fn store_accumulator_for_mem() {
+                let cpu = run(vec![0x85, 0xF0, 0x00], |cpu| {
+                    cpu.accumulator = 0x90;
+                    cpu.mem_write(0xF0, 0x00);
+                });
+
+                assert_eq!(cpu.mem_read(0xF0), cpu.accumulator);
+            }
+
+            #[test]
+            fn store_register_x_for_mem() {
+                let cpu = run(vec![0x86, 0xF0, 0x00], |cpu| {
+                    cpu.index_register_x = 0x90;
+                    cpu.mem_write(0xF0, 0x00);
+                });
+
+                assert_eq!(cpu.mem_read(0xF0), cpu.index_register_x);
+            }
+
+            #[test]
+            fn store_register_y_for_mem() {
+                let cpu = run(vec![0x84, 0xF0, 0x00], |cpu| {
+                    cpu.index_register_x = 0x90;
+                    cpu.mem_write(0xF0, 0x00);
+                });
+
+                assert_eq!(cpu.mem_read(0xF0), cpu.index_register_y);
+            }
+        }
     }
     mod operand_address_tests {
 
