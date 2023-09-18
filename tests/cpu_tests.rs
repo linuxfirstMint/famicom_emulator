@@ -1080,6 +1080,21 @@ mod tests {
                 assert_eq!(cpu.program_counter, 0x8002);
             }
         }
+        mod load_mem {
+            use super::*;
+
+            #[test]
+            fn load_mem_to_registe_x() {
+                let cpu = run(vec![0xA2, 0x10, 0x00], |_| {});
+                assert_eq!(cpu.index_register_x, 0x10);
+            }
+
+            #[test]
+            fn load_mem_to_registe_y() {
+                let cpu = run(vec![0xA0, 0x10, 0x00], |_| {});
+                assert_eq!(cpu.index_register_y, 0x10);
+            }
+        }
     }
     mod operand_address_tests {
 
