@@ -177,6 +177,20 @@ impl CPU {
         self.update_zero_and_negative_flags(self.accumulator)
     }
 
+    fn ldx(&mut self, mode: &AddressingMode) {
+        let value = self.fetch_data(mode);
+
+        self.index_register_x = value;
+        self.update_zero_and_negative_flags(self.index_register_x)
+    }
+
+    fn ldy(&mut self, mode: &AddressingMode) {
+        let value = self.fetch_data(mode);
+
+        self.index_register_y = value;
+        self.update_zero_and_negative_flags(self.index_register_y)
+    }
+
     fn tax(&mut self) {
         self.index_register_x = self.accumulator;
         self.update_zero_and_negative_flags(self.index_register_x)
@@ -428,6 +442,12 @@ impl CPU {
             match opcode.mnemonic {
                 LDA => {
                     self.lda(&opcode.mode);
+                }
+                LDX => {
+                    self.ldx(&opcode.mode);
+                }
+                LDY => {
+                    self.ldy(&opcode.mode);
                 }
                 TAX => self.tax(),
                 INC => self.inc(&opcode.mode),
