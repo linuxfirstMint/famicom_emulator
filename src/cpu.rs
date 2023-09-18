@@ -477,6 +477,7 @@ impl CPU {
                 CMP => self.compare(&opcode.mode, self.accumulator),
                 CPX => self.compare(&opcode.mode, self.index_register_x),
                 CPY => self.compare(&opcode.mode, self.index_register_y),
+                NOP => {}
                 _ => todo!(),
             }
 

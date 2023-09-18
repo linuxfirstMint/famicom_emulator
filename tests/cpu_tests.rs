@@ -1051,7 +1051,6 @@ mod tests {
                 assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
             }
         }
-
         mod increment {
             use super::*;
 
@@ -1070,6 +1069,15 @@ mod tests {
                 });
                 assert_eq!(cpu.index_register_y, 0x71);
                 assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
+            }
+        }
+        mod nop {
+            use super::*;
+
+            #[test]
+            fn test_nop() {
+                let cpu = run(vec![0xEA, 0x00], |_| {});
+                assert_eq!(cpu.program_counter, 0x8002);
             }
         }
     }
