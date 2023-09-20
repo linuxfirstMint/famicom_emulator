@@ -1154,6 +1154,22 @@ mod tests {
                 });
                 assert_eq!(cpu.accumulator, cpu.index_register_x);
             }
+
+            #[test]
+            fn test_txs_register_x_to_stack() {
+                let cpu = run(vec![0x9A, 0x00], |cpu| {
+                    cpu.index_register_x = 0x90;
+                });
+                assert_eq!(cpu.stack_pointer, cpu.index_register_x);
+            }
+
+            #[test]
+            fn test_tsx_stack_to_register_x() {
+                let cpu = run(vec![0xBA, 0x00], |cpu| {
+                    cpu.stack_pointer = 0x90;
+                });
+                assert_eq!(cpu.index_register_x, cpu.stack_pointer);
+            }
         }
         mod stack {
             use super::*;

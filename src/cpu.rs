@@ -214,6 +214,11 @@ impl CPU {
         self.update_zero_and_negative_flags(self.index_register_x)
     }
 
+    fn tsx(&mut self) {
+        self.index_register_x = self.stack_pointer;
+        self.update_zero_and_negative_flags(self.index_register_x)
+    }
+
     fn tay(&mut self) {
         self.index_register_y = self.accumulator;
         self.update_zero_and_negative_flags(self.index_register_y)
@@ -227,6 +232,10 @@ impl CPU {
     fn txa(&mut self) {
         self.accumulator = self.index_register_x;
         self.update_zero_and_negative_flags(self.accumulator)
+    }
+
+    fn txs(&mut self) {
+        self.stack_pointer = self.index_register_x;
     }
 
     fn inc(&mut self, mode: &AddressingMode) {
@@ -517,6 +526,8 @@ impl CPU {
                 TAY => self.tay(),
                 TYA => self.tya(),
                 TXA => self.txa(),
+                TSX => self.tsx(),
+                TXS => self.txs(),
                 INC => self.inc(&opcode.mode),
                 INX => self.inx(),
                 INY => self.iny(),
