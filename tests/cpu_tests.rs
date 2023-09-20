@@ -1227,6 +1227,23 @@ mod tests {
                 }
             }
         }
+        mod jmp {
+            use super::*;
+
+            #[test]
+            fn test_jmp_absolute() {
+                let cpu = run(vec![0x4C, 0x34, 0x89, 0x00], |_| {});
+                assert_eq!(cpu.program_counter, 0x8935); // JMP命令(0x8934) + BREAKE命令(1)
+            }
+
+            #[test]
+            fn test_jmp_indirect() {
+                let cpu = run(vec![0x6C, 0x80, 0x00], |cpu| {
+                    cpu.mem_write_u16(0x80, 0x8900); //JMP命令(0x8900) + BREAKE命令(1)
+                });
+                assert_eq!(cpu.program_counter, 0x8901);
+            }
+        }
     }
     mod operand_address_tests {
 

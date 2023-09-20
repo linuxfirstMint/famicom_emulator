@@ -481,6 +481,11 @@ impl CPU {
         0x0100 | (self.stack_pointer as u16)
     }
 
+    fn jmp(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        self.program_counter = addr;
+    }
+
     fn fetch_data(&self, mode: &AddressingMode) -> u8 {
         let addr = self.get_operand_address(mode);
         match mode {
@@ -580,6 +585,7 @@ impl CPU {
                 PLA => self.pla(),
                 PHP => self.php(),
                 PLP => self.plp(),
+                JMP => self.jmp(&opcode.mode),
                 _ => todo!(),
             }
 
