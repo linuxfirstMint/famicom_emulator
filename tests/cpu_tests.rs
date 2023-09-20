@@ -1155,6 +1155,39 @@ mod tests {
                 assert_eq!(cpu.accumulator, cpu.index_register_x);
             }
         }
+        mod stack {
+            use super::*;
+
+            mod push {
+                use super::*;
+
+                #[test]
+                fn test_push_accumlator() {
+                    let cpu = run(vec![0x48, 0x00], |cpu| {
+                        cpu.accumulator = 0x90;
+                    });
+                    assert_eq!(cpu.memory[0x1FF], 0x90);
+                    assert_eq!(cpu.stack_pointer, 0xFE);
+                }
+            }
+            mod pull {
+                use super::*;
+
+                #[test]
+                fn test_pull_accumlator() {
+                    let cpu = run(vec![0x48, 0x68, 0x00], |cpu| {
+                        cpu.accumulator = 0x90;
+                    });
+                    assert_eq!(
+                        cpu.status
+                            .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
+                        false
+                    );
+                    assert_eq!(cpu.accumulator, 0x90);
+                    assert_eq!(cpu.stack_pointer, 0xFF);
+                }
+            }
+            }
     }
     mod operand_address_tests {
 
