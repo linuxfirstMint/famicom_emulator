@@ -442,6 +442,14 @@ impl CPU {
         self.push(self.accumulator);
     }
 
+    fn php(&mut self) {
+        self.push(self.status.bits());
+    }
+
+    fn plp(&mut self) {
+        self.status = ProcessorStatus::from_bits_truncate(self.pull());
+    }
+
     fn pla(&mut self) {
         self.accumulator = self.pull();
         self.update_zero_and_negative_flags(self.accumulator)
@@ -559,6 +567,8 @@ impl CPU {
                 NOP => {}
                 PHA => self.pha(),
                 PLA => self.pla(),
+                PHP => self.php(),
+                PLP => self.plp(),
                 _ => todo!(),
             }
 
