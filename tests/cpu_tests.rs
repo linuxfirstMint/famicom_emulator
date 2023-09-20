@@ -1155,6 +1155,62 @@ mod tests {
                 assert_eq!(cpu.accumulator, cpu.index_register_x);
             }
         }
+        mod stack {
+            use super::*;
+
+            mod push {
+                use super::*;
+
+                #[test]
+                fn test_push_accumlator() {
+                    let cpu = run(vec![0x48, 0x00], |cpu| {
+                        cpu.accumulator = 0x90;
+                    });
+                    assert_eq!(cpu.memory[0x1FF], 0x90);
+                    assert_eq!(cpu.stack_pointer, 0xFE);
+                }
+                #[test]
+                fn test_push_processor_status() {
+                    let cpu = run(vec![0x08, 0x00], |cpu| {
+                        cpu.status = ProcessorStatus::CARRY | ProcessorStatus::ZERO;
+                    });
+
+                    assert_eq!(cpu.memory[0x1FF], 0x03); // (ProcessorStatus::CARRY | ProcessorStatus::ZERO) to bit flag is 0x03
+                    assert_eq!(cpu.stack_pointer, 0xFE);
+                }
+            }
+            mod pull {
+                use super::*;
+
+                #[test]
+                fn test_pull_accumlator() {
+                    let cpu = run(vec![0x48, 0x68, 0x00], |cpu| {
+                        cpu.accumulator = 0x90;
+                    });
+                    assert_eq!(
+                        cpu.status
+                            .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
+                        false
+                    );
+                    assert_eq!(cpu.accumulator, 0x90);
+                    assert_eq!(cpu.stack_pointer, 0xFF);
+                }
+
+                #[test]
+                fn test_pull_processor_status() {
+                    let cpu = run(vec![0x08, 0x28, 0x00], |cpu| {
+                        cpu.status = ProcessorStatus::CARRY | ProcessorStatus::ZERO;
+                    });
+
+                    assert_eq!(
+                        cpu.status
+                            .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
+                        true
+                    );
+                    assert_eq!(cpu.stack_pointer, 0xFF);
+                }
+            }
+        }
     }
     mod operand_address_tests {
 

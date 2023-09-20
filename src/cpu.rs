@@ -41,6 +41,7 @@ pub struct CPU {
     pub program_counter: u16,
     pub index_register_x: u8,
     pub index_register_y: u8,
+    pub stack_pointer: u8,
     pub memory: [u8; 0x10000],
 }
 
@@ -52,6 +53,7 @@ impl CPU {
             program_counter: 0,
             index_register_x: 0,
             index_register_y: 0,
+            stack_pointer: 0xFF,
             memory: [0; 0x10000],
         }
     }
@@ -154,6 +156,7 @@ impl CPU {
         self.accumulator = 0;
         self.index_register_x = 0;
         self.index_register_y = 0;
+        self.stack_pointer = 0xff;
         self.status = ProcessorStatus::empty();
 
         self.program_counter = self.mem_read_u16(0xfffc);
@@ -435,6 +438,40 @@ impl CPU {
         self.update_zero_and_negative_flags(register.wrapping_sub(value))
     }
 
+    fn pha(&mut self) {
+        self.push(self.accumulator);
+    }
+
+    fn php(&mut self) {
+        self.push(self.status.bits());
+    }
+
+    fn plp(&mut self) {
+        self.status = ProcessorStatus::from_bits_truncate(self.pull());
+    }
+
+    fn pla(&mut self) {
+        self.accumulator = self.pull();
+        self.update_zero_and_negative_flags(self.accumulator)
+    }
+
+    fn push(&mut self, data: u8) {
+        let addr = self.get_stack_addr();
+        self.mem_write(addr, data);
+        self.stack_pointer = self.stack_pointer.wrapping_sub(1);
+    }
+
+    fn pull(&mut self) -> u8 {
+        self.stack_pointer = self.stack_pointer.wrapping_add(1);
+        let addr = self.get_stack_addr();
+        let data = self.mem_read(addr);
+        data
+    }
+
+    fn get_stack_addr(&self) -> u16 {
+        0x0100 | (self.stack_pointer as u16)
+    }
+
     fn fetch_data(&self, mode: &AddressingMode) -> u8 {
         let addr = self.get_operand_address(mode);
         match mode {
@@ -528,6 +565,10 @@ impl CPU {
                 CPX => self.compare(&opcode.mode, self.index_register_x),
                 CPY => self.compare(&opcode.mode, self.index_register_y),
                 NOP => {}
+                PHA => self.pha(),
+                PLA => self.pla(),
+                PHP => self.php(),
+                PLP => self.plp(),
                 _ => todo!(),
             }
 
