@@ -513,6 +513,34 @@ impl CPU {
         self.program_counter = return_addr;
     }
 
+    fn brk(&mut self) {
+        // TODO 割り込み処理の実装後に実装
+        // self.status.insert(ProcessorStatus::BREAK);
+        // self.push_u16(self.program_counter + 1);
+        // self.php();
+        // self.status.insert(ProcessorStatus::INTERRUPT_DISABLE);
+        // self.program_counter = self.mem_read_u16(0xFFFE);
+    }
+
+    fn rti(&mut self) {
+        // TODO 割り込み処理の実装後に実装
+        // self.plp();
+        // self.program_counter = self.pull_u16();
+        return;
+    }
+
+    // TODO 割り込み処理の実装後に実装
+    // fn irq(&mut self) {
+    //     if !self.status.contains(ProcessorStatus::INTERRUPT_DISABLE) {
+    //         self.push_u16(self.program_counter);
+    //         self.php();
+    //         self.status
+    //             .remove(ProcessorStatus::INTERRUPT_DISABLE | ProcessorStatus::BREAK);
+    //         self.program_counter = self.mem_read_u16(0xFFFE);
+    //         self.rti()
+    //     }
+    // }
+
     fn fetch_data(&self, mode: &AddressingMode) -> u8 {
         let addr = self.get_operand_address(mode);
         match mode {
@@ -576,6 +604,8 @@ impl CPU {
                 ROL => self.rol(&opcode.mode),
                 ROR => self.ror(&opcode.mode),
                 BRK => return,
+                // BRK => self.brk(),
+                // RTI => self.rti(),
                 BCC | BCS => self.branch(
                     &opcode.mode,
                     &ProcessorStatus::CARRY,

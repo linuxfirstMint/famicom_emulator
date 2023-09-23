@@ -159,20 +159,6 @@ mod tests {
                 assert_eq!(cpu.index_register_x, 1)
             }
         }
-        mod brk {
-
-            use super::*;
-
-            #[test]
-            fn test_brk_effects() {
-                let mut cpu = CPU::new();
-                cpu.load_and_run(vec![0x00]);
-                assert_eq!(
-                    cpu.program_counter, 0x8001,
-                    "オペコードBRKが実行された際のプログラムカウンタが正しくありません"
-                );
-            }
-        }
         mod adc {
             use super::*;
 
@@ -1262,6 +1248,44 @@ mod tests {
                 assert_eq!(cpu.program_counter, 0x8007);
             }
         }
+        // TODO 割り込み処理の実装後にテストを書く
+        // mod interrupt {
+        //     use super::*;
+
+        // #[test]
+        // fn test_interrupt_brk_rti() {
+        //     let cpu = run(vec![0x00, 0x00, 0x00, 0x00, 0x00], |cpu| {
+        //         cpu.mem_write(0xFFFE, 0x00);
+        //         cpu.mem_write(0xFFFF, 0x80);
+        //         cpu.program_counter = 0x8000;
+        //         cpu.mem_write(0x8000, 0x00); //BRK
+        //         cpu.mem_write(0x8001, 0x40); //RTI
+        //     });
+        //     assert_eq!(cpu.program_counter, 0x8002);
+        // }
+        // mod brk {
+
+        //     use super::*;
+
+        //     #[test]
+        //     fn test_brk_effects() {
+        //         let cpu = run(vec![0x00], |cpu| {
+        //             cpu.status.set(ProcessorStatus::CARRY, true);
+        //         });
+        //     }
+        //     assert_eq!(cpu.program_counter, 0xFFFE);
+        //     assert_eq!(cpu.stack_pointer, 0xFD);
+        //     // assert_eq!(cpu.mem_read_u16(0x1FF), 0x0002);
+        //     // assert_eq!(cpu.mem_read(0x1FD), 0b01000100);
+        //     assert_eq!(cpu.pop_u16(), 0x0002);
+        //     assert_eq!(
+        //         cpu.pop(),
+        //         ProcessorStatus::from_name(ProcessorStatus::BREAK | ProcessorStatus::CARRY)
+        //             .unrap()
+        //     );
+        //     assert_eq!(cpu.status.contains(ProcessorStatus::BREAK), true);
+        // }
+        // }
     }
     mod operand_address_tests {
 
