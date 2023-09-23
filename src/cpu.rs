@@ -470,6 +470,13 @@ impl CPU {
         self.stack_pointer = self.stack_pointer.wrapping_sub(1);
     }
 
+    fn push_u16(&mut self, data: u16) {
+        let hi = (data >> 8) as u8;
+        let lo = (data & 0xff) as u8;
+        self.push(hi);
+        self.push(lo);
+    }
+
     fn pull(&mut self) -> u8 {
         self.stack_pointer = self.stack_pointer.wrapping_add(1);
         let addr = self.get_stack_addr();
@@ -477,8 +484,33 @@ impl CPU {
         data
     }
 
+    fn pull_u16(&mut self) -> u16 {
+        let lo = self.pull() as u16;
+        let hi = self.pull() as u16;
+        (hi << 8) | lo
+    }
+
     fn get_stack_addr(&self) -> u16 {
         0x0100 | (self.stack_pointer as u16)
+    }
+
+    fn jmp(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        self.program_counter = addr;
+    }
+
+    fn jsr(&mut self, mode: &AddressingMode, opcode_len: &u8) {
+        let addr = self.get_operand_address(mode);
+        let operand_byte = *opcode_len as u16 - 1; //jsrのオペランド部のバイト数
+        let operand_byte_count = operand_byte - 1;
+        let return_addr = self.program_counter + operand_byte_count;
+        self.push_u16(return_addr);
+        self.program_counter = addr;
+    }
+
+    fn rts(&mut self) {
+        let return_addr = self.pull_u16() + 1;
+        self.program_counter = return_addr;
     }
 
     fn fetch_data(&self, mode: &AddressingMode) -> u8 {
@@ -580,6 +612,9 @@ impl CPU {
                 PLA => self.pla(),
                 PHP => self.php(),
                 PLP => self.plp(),
+                JMP => self.jmp(&opcode.mode),
+                JSR => self.jsr(&opcode.mode, &opcode.len),
+                RTS => self.rts(),
                 _ => todo!(),
             }
 

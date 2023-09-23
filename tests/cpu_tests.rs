@@ -1227,6 +1227,41 @@ mod tests {
                 }
             }
         }
+        mod jmp {
+            use super::*;
+
+            #[test]
+            fn test_jmp_absolute() {
+                let cpu = run(vec![0x4C, 0x34, 0x89, 0x00], |_| {});
+                assert_eq!(cpu.program_counter, 0x8935); // JMP命令(0x8934) + BREAKE命令(1)
+            }
+
+            #[test]
+            fn test_jmp_indirect() {
+                let cpu = run(vec![0x6C, 0x80, 0x00], |cpu| {
+                    cpu.mem_write_u16(0x80, 0x8900); //JMP命令(0x8900) + BREAKE命令(1)
+                });
+                assert_eq!(cpu.program_counter, 0x8901);
+            }
+        }
+
+        mod subroutine {
+            use super::*;
+
+            #[test]
+            fn test_jsr_rts() {
+                let cpu = run(vec![0x20, 0xAF, 0x80, 0x20, 0x00, 0x9A, 0x00], |cpu| {
+                    cpu.mem_write(0x80AF, 0xA9); //LDA
+                    cpu.mem_write(0x80B0, 0x42); // LDA. 0x42
+                    cpu.mem_write(0x80B1, 0x60); //RTS
+                    cpu.mem_write(0x9A00, 0xE8); //INX
+                    cpu.mem_write(0x9A01, 0x60); //RTS
+                });
+                assert_eq!(cpu.accumulator, 0x42);
+                assert_eq!(cpu.index_register_x, 0x01);
+                assert_eq!(cpu.program_counter, 0x8007);
+            }
+        }
     }
     mod operand_address_tests {
 
