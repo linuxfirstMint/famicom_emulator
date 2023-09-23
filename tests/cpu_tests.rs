@@ -1244,6 +1244,24 @@ mod tests {
                 assert_eq!(cpu.program_counter, 0x8901);
             }
         }
+
+        mod subroutine {
+            use super::*;
+
+            #[test]
+            fn test_jsr_rts() {
+                let cpu = run(vec![0x20, 0xAF, 0x80, 0x20, 0x00, 0x9A, 0x00], |cpu| {
+                    cpu.mem_write(0x80AF, 0xA9); //LDA
+                    cpu.mem_write(0x80B0, 0x42); // LDA. 0x42
+                    cpu.mem_write(0x80B1, 0x60); //RTS
+                    cpu.mem_write(0x9A00, 0xE8); //INX
+                    cpu.mem_write(0x9A01, 0x60); //RTS
+                });
+                assert_eq!(cpu.accumulator, 0x42);
+                assert_eq!(cpu.index_register_x, 0x01);
+                assert_eq!(cpu.program_counter, 0x8007);
+            }
+        }
     }
     mod operand_address_tests {
 
