@@ -93,10 +93,8 @@ impl CPU {
             }
 
             AddressingMode::Indirect => {
-                let base = self.mem_read(self.program_counter);
-                let lo = self.mem_read(base as u16);
-                let hi = self.mem_read((base).wrapping_add(1) as u16);
-                let addr = (hi as u16) << 8 | (lo as u16);
+                let base = self.mem_read_u16(self.program_counter);
+                let addr = self.mem_read_u16(base);
                 addr
             }
 
@@ -353,20 +351,21 @@ impl CPU {
     }
 
     fn lsr(&mut self, mode: &AddressingMode) {
-        let value = self.fetch_data(mode);
+        let value = match mode {
+            AddressingMode::Accumulator => self.accumulator,
+            _ => self.fetch_data(mode),
+        };
 
-        let (shifted_value, _) = value.overflowing_shr(1);
+        self.status.set(ProcessorStatus::CARRY, value & 0x01 == 1);
 
-        self.update_zero_and_negative_flags(value);
-
-        self.status
-            .set(ProcessorStatus::CARRY, (value >> 7) & 1 > 0);
+        let negative_flag = value >> 1;
+        self.update_zero_and_negative_flags(negative_flag);
 
         match mode {
-            AddressingMode::Accumulator => self.accumulator = shifted_value,
+            AddressingMode::Accumulator => self.accumulator = negative_flag,
             _ => {
                 let addr = self.get_operand_address(mode);
-                self.mem_write(addr, shifted_value)
+                self.mem_write(addr, negative_flag)
             }
         }
     }
@@ -418,21 +417,32 @@ impl CPU {
     }
 
     fn branch(&mut self, mode: &AddressingMode, status: &ProcessorStatus, condition: bool) {
-        let addr = self.get_operand_address(mode) as i8;
-
-        if self.status.contains(*status) == condition {
-            self.program_counter = self.program_counter.wrapping_add_signed(addr.into())
+        let addr = self.get_operand_address(mode);
+        if condition {
+            if self.status.bits() & status.bits() != 0 {
+                self.program_counter = addr.wrapping_add(1)
+            }
+        } else {
+            if self.status.bits() & status.bits() == 0 {
+                self.program_counter = addr.wrapping_add(1)
+            }
         }
     }
 
     fn bit(&mut self, mode: &AddressingMode) {
         let value = self.fetch_data(mode);
 
+        let zero = self.accumulator & value;
+        if zero == 0 {
+            self.status.insert(ProcessorStatus::ZERO)
+        } else {
+            self.status.remove(ProcessorStatus::ZERO)
+        }
+
+        let flags = ProcessorStatus::NEGATIVE.bits() | ProcessorStatus::OVERFLOW.bits();
+        let status = (self.status.bits() & !flags) | (value & flags);
         self.status
-            .set(ProcessorStatus::ZERO, self.accumulator & value as u8 != 0);
-        self.status
-            .set(ProcessorStatus::OVERFLOW, (value >> 5) << 1 != 0);
-        self.status.set(ProcessorStatus::NEGATIVE, value >> 6 != 0);
+            .insert(ProcessorStatus::from_bits_retain(status));
     }
 
     fn status_bit(&self, reg: &ProcessorStatus) -> u8 {
@@ -444,9 +454,22 @@ impl CPU {
 
         if register >= value {
             self.status.insert(ProcessorStatus::CARRY);
+        } else {
+            self.status.remove(ProcessorStatus::CARRY);
         }
 
         self.update_zero_and_negative_flags(register.wrapping_sub(value))
+    }
+
+    fn cmp(&mut self, mode: &AddressingMode) {
+        self.compare(mode, self.accumulator)
+    }
+
+    fn cpx(&mut self, mode: &AddressingMode) {
+        self.compare(mode, self.index_register_x)
+    }
+    fn cpy(&mut self, mode: &AddressingMode) {
+        self.compare(mode, self.index_register_y)
     }
 
     fn pha(&mut self) {
@@ -625,7 +648,6 @@ impl CPU {
                 opcode.mnemonic,
                 self.mem_read(0x02)  // Snake game key input storage location 
             );
-
             match opcode.mnemonic {
                 LDA => self.lda(&opcode.mode),
                 LDX => self.ldx(&opcode.mode),
@@ -657,26 +679,14 @@ impl CPU {
                 BRK => return,
                 // BRK => self.brk(),
                 // RTI => self.rti(),
-                BCC | BCS => self.branch(
-                    &opcode.mode,
-                    &ProcessorStatus::CARRY,
-                    self.status.intersects(ProcessorStatus::CARRY),
-                ),
-                BNE | BEQ => self.branch(
-                    &opcode.mode,
-                    &ProcessorStatus::ZERO,
-                    self.status.intersects(ProcessorStatus::ZERO),
-                ),
-                BVC | BVS => self.branch(
-                    &opcode.mode,
-                    &ProcessorStatus::OVERFLOW,
-                    self.status.intersects(ProcessorStatus::OVERFLOW),
-                ),
-                BPL | BMI => self.branch(
-                    &opcode.mode,
-                    &ProcessorStatus::NEGATIVE,
-                    self.status.intersects(ProcessorStatus::NEGATIVE),
-                ),
+                BCC => self.branch(&opcode.mode, &ProcessorStatus::CARRY, false),
+                BCS => self.branch(&opcode.mode, &ProcessorStatus::CARRY, true),
+                BVC => self.branch(&opcode.mode, &ProcessorStatus::OVERFLOW, false),
+                BVS => self.branch(&opcode.mode, &ProcessorStatus::OVERFLOW, true),
+                BPL => self.branch(&opcode.mode, &ProcessorStatus::NEGATIVE, false),
+                BMI => self.branch(&opcode.mode, &ProcessorStatus::NEGATIVE, true),
+                BNE => self.branch(&opcode.mode, &ProcessorStatus::ZERO, false),
+                BEQ => self.branch(&opcode.mode, &ProcessorStatus::ZERO, true),
                 BIT => self.bit(&opcode.mode),
                 CLC => self.status.remove(ProcessorStatus::CARRY),
                 SEC => self.status.insert(ProcessorStatus::CARRY),
@@ -685,9 +695,9 @@ impl CPU {
                 CLD => self.status.remove(ProcessorStatus::DECIMAL),
                 SED => self.status.insert(ProcessorStatus::DECIMAL),
                 CLV => self.status.remove(ProcessorStatus::OVERFLOW),
-                CMP => self.compare(&opcode.mode, self.accumulator),
-                CPX => self.compare(&opcode.mode, self.index_register_x),
-                CPY => self.compare(&opcode.mode, self.index_register_y),
+                CMP => self.cmp(&opcode.mode),
+                CPX => self.cpx(&opcode.mode),
+                CPY => self.cpy(&opcode.mode),
                 NOP => {}
                 PHA => self.pha(),
                 PLA => self.pla(),
