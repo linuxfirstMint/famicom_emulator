@@ -1,6 +1,8 @@
 use crate::opcodes::{self, Operation::*, OPCODES_MAP};
 use bitflags::bitflags;
-use std::collections::HashMap;
+extern crate log;
+use log::{debug, info};
+use std::collections::BTreeMap;
 
 bitflags! {
     #[derive(Clone,Copy)]
@@ -529,6 +531,34 @@ impl CPU {
         return;
     }
 
+    fn print_stack(&self) -> String {
+        let mut stack = BTreeMap::new();
+
+        if self.stack_pointer == 0xFF {
+            return String::from("[None]");
+        } else {
+            for i in self.stack_pointer..=0xFF {
+                let value = self.mem_read(0x0100 + i as u16);
+                let value_hex = format!("0x{:X}", value);
+                let addr = format!("0x{:03X}", 0x0100 + i as u16);
+                stack.insert(addr, value_hex);
+            }
+
+            let mut result = String::from("[");
+
+            // stackを一列で表示するための処理
+            let stack_info: Vec<String> = stack
+                .iter()
+                .map(|(key, value)| format!("{}: {}", key, value))
+                .collect();
+
+            result.push_str(&stack_info.join(", "));
+            result.push_str("]");
+
+            result
+        }
+    }
+
     // TODO 割り込み処理の実装後に実装
     // fn irq(&mut self) {
     //     if !self.status.contains(ProcessorStatus::INTERRUPT_DISABLE) {
@@ -581,6 +611,20 @@ impl CPU {
             let opcode = opcodes
                 .get(&code)
                 .expect(&format!("OpCode: {:x} is not found", code));
+
+            info!(
+                "PC: {:#06X}, A: {:#04X}, X: {:#04X}, Y: {:#04X}, SP: {:#04X}, Stack: {:#04?} Status: {:#04X}, OpCode: {:#04X}, Mnemonic: {:#04?}, Direction: {:?}",
+                self.program_counter,
+                self.accumulator,
+                self.index_register_x,
+                self.index_register_y,
+                self.stack_pointer,
+                self.print_stack(),
+                self.status,
+                opcode.code,
+                opcode.mnemonic,
+                self.mem_read(0x02)  // Snake game key input storage location 
+            );
 
             match opcode.mnemonic {
                 LDA => self.lda(&opcode.mode),

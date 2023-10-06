@@ -1,5 +1,8 @@
 pub mod cpu;
 pub mod opcodes;
+
+use std::env;
+
 use cpu::CPU;
 
 use rand::Rng;
@@ -9,10 +12,19 @@ use sdl2::pixels::Color;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::EventPump;
 
+extern crate env_logger;
+extern crate log;
+
+use log::info;
+
 #[macro_use]
 extern crate lazy_static;
 
 fn main() {
+    //logging default level info
+    env::set_var("RUST_LOG", "info");
+    env_logger::init();
+
     let game_code = vec![
         0x20, 0x06, 0x06, 0x20, 0x38, 0x06, 0x20, 0x0d, 0x06, 0x20, 0x2a, 0x06, 0x60, 0xa9, 0x02,
         0x85, 0x02, 0xa9, 0x04, 0x85, 0x03, 0xa9, 0x11, 0x85, 0x10, 0xa9, 0x10, 0x85, 0x12, 0xa9,
@@ -145,4 +157,9 @@ fn handle_user_input(cpu: &mut CPU, event_pump: &mut EventPump) {
             _ => { /* do nothing */ }
         }
     }
+    info!(
+        "User input = mem[0xFF]: 0x{:X} , Acc: 0x{:X}",
+        cpu.mem_read(0xFF), // 0xFF is the address of the user input
+        cpu.accumulator
+    );
 }
