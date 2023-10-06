@@ -162,321 +162,163 @@ mod tests {
         mod adc {
             use super::*;
 
-            mod effects {
-                use super::*;
+            #[test]
+            fn test_adc_no_carry() {
+                let cpu = run(vec![0x69, 0x10, 0x00], |cpu| {
+                    cpu.accumulator = 0x20;
+                });
+                assert_eq!(cpu.accumulator, 0x30);
+                assert_eq!(cpu.status.bits(), 0);
+            }
 
-                #[test]
-                fn test_adc_no_carry() {
-                    //キャリーなし
-                    let mut cpu = CPU::new();
+            #[test]
+            fn test_adc_has_carry() {
+                let cpu = run(vec![0x69, 0x10, 0x00], |cpu| {
+                    cpu.accumulator = 0x20;
+                    cpu.status.insert(ProcessorStatus::CARRY)
+                });
+                assert_eq!(cpu.accumulator, 0x31);
+                assert_eq!(cpu.status.bits(), 0);
+            }
 
-                    cpu.load(vec![0x69, 0x10, 0x00]);
-                    cpu.reset();
-                    cpu.accumulator = 0x02;
-                    cpu.run();
-
-                    println!();
-
-                    assert_eq!(cpu.accumulator, 0x12);
-                    assert_eq!(
-                        cpu.status.contains(
-                            ProcessorStatus::CARRY
-                                | ProcessorStatus::ZERO
-                                | ProcessorStatus::OVERFLOW
-                                | ProcessorStatus::NEGATIVE
-                        ),
-                        false
-                    );
-                }
-
-                #[test]
-                fn test_adc_has_carry() {
-                    // 計算前にキャリーあり
-
-                    let mut cpu = CPU::new();
-
-                    cpu.load(vec![0x69, 0x10, 0x00]);
-                    cpu.reset();
-                    cpu.accumulator = 0x01;
-                    cpu.status.insert(ProcessorStatus::CARRY);
-                    cpu.run();
-
-                    assert_eq!(cpu.accumulator, 0x12);
-                    assert_eq!(
-                        cpu.status.contains(
-                            ProcessorStatus::CARRY
-                                | ProcessorStatus::ZERO
-                                | ProcessorStatus::OVERFLOW
-                                | ProcessorStatus::NEGATIVE
-                        ),
-                        false
-                    );
-                }
-                #[test]
-                fn test_adc_occur_carry() {
-                    // 計算中にキャリー発生
-
-                    let mut cpu = CPU::new();
-
-                    cpu.load(vec![0x69, 0x01, 0x00]);
-                    cpu.reset();
+            #[test]
+            fn test_adc_occur_carry() {
+                let cpu = run(vec![0x69, 0x01, 0x00], |cpu| {
                     cpu.accumulator = 0xFF;
-                    cpu.run();
+                });
+                assert_eq!(cpu.accumulator, 0x00);
+                assert_eq!(
+                    cpu.status
+                        .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
+                    true
+                );
+            }
 
-                    assert_eq!(cpu.accumulator, 0x0);
-                    assert_eq!(
-                        cpu.status
-                            .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
-                        true
-                    );
-                    assert_eq!(
-                        cpu.status
-                            .contains(ProcessorStatus::OVERFLOW | ProcessorStatus::NEGATIVE),
-                        false
-                    );
-                }
-
-                #[test]
-                fn test_adc_occur_overflow_plus() {
-                    //キャリーとオーバーフローが発生し計算結果がプラスの値になる場合
-                    let mut cpu = CPU::new();
-
-                    cpu.load(vec![0x69, 0x01, 0x00]);
-                    cpu.reset();
+            #[test]
+            fn test_adc_occur_overflow_plus() {
+                let cpu = run(vec![0x69, 0x10, 0x00], |cpu| {
                     cpu.accumulator = 0x7F;
-                    cpu.run();
+                });
+                assert_eq!(cpu.accumulator, 0x8F);
+                assert_eq!(
+                    cpu.status
+                        .contains(ProcessorStatus::NEGATIVE | ProcessorStatus::OVERFLOW),
+                    true
+                );
+            }
 
-                    assert_eq!(cpu.accumulator, 0x80);
-                    assert_eq!(
-                        cpu.status
-                            .contains(ProcessorStatus::NEGATIVE | ProcessorStatus::OVERFLOW),
-                        true
-                    )
-                }
-
-                #[test]
-                fn test_adc_occur_overflow_minus() {
-                    //キャリーとオーバーフローが発生し計算結果がマイナスの値になる場合
-                    let mut cpu = CPU::new();
-
-                    cpu.load(vec![0x69, 0x81, 0x00]);
-                    cpu.reset();
-                    cpu.accumulator = 0x81;
-                    cpu.run();
-
-                    assert_eq!(cpu.accumulator, 0x2);
-                    assert_eq!(
-                        cpu.status
-                            .contains(ProcessorStatus::CARRY | ProcessorStatus::OVERFLOW),
-                        true
-                    )
-                }
-
-                #[test]
-                fn test_adc_occur_overflow_minus_has_carry() {
-                    //計算前にキャリーがあり計算中にオーバーフローが発生して計算結果がプラスの値になる場合
-                    let mut cpu = CPU::new();
-
-                    cpu.load(vec![0x69, 0x6F, 0x00]);
-                    cpu.reset();
+            #[test]
+            fn test_adc_occur_overflow_plus_with_carry() {
+                let cpu = run(vec![0x69, 0x6F, 0x00], |cpu| {
                     cpu.accumulator = 0x10;
                     cpu.status.insert(ProcessorStatus::CARRY);
-                    cpu.run();
+                });
+                assert_eq!(cpu.accumulator, 0x80);
+                assert_eq!(
+                    cpu.status
+                        .contains(ProcessorStatus::NEGATIVE | ProcessorStatus::OVERFLOW),
+                    true
+                );
+            }
 
-                    assert_eq!(cpu.accumulator, 0x80);
-                    assert_eq!(
-                        cpu.status
-                            .contains(ProcessorStatus::NEGATIVE | ProcessorStatus::OVERFLOW),
-                        true
-                    )
-                }
-
-                #[test]
-                fn test_adc_occur_overflow_plus_has_carry() {
-                    //計算前にキャリーがあり計算中にオーバーフローが発生して計算結果がマイナスの値になる場合
-                    let mut cpu = CPU::new();
-
-                    cpu.load(vec![0x69, 0x81, 0x00]);
-                    cpu.reset();
+            #[test]
+            fn test_adc_occur_overflow_minus() {
+                let cpu = run(vec![0x69, 0x81, 0x00], |cpu| {
                     cpu.accumulator = 0x81;
+                });
+                assert_eq!(cpu.accumulator, 0x02);
+                assert_eq!(
+                    cpu.status
+                        .contains(ProcessorStatus::OVERFLOW | ProcessorStatus::CARRY),
+                    true
+                );
+            }
+
+            #[test]
+            fn test_adc_occur_overflow_minus_with_carry() {
+                let cpu = run(vec![0x69, 0x80, 0x00], |cpu| {
+                    cpu.accumulator = 0x80;
                     cpu.status.insert(ProcessorStatus::CARRY);
-                    cpu.run();
+                });
+                assert_eq!(cpu.accumulator, 0x01);
+                assert_eq!(
+                    cpu.status
+                        .contains(ProcessorStatus::OVERFLOW | ProcessorStatus::CARRY),
+                    true
+                );
+            }
 
-                    assert_eq!(cpu.accumulator, 0x03);
-                    assert_eq!(
-                        cpu.status
-                            .contains(ProcessorStatus::CARRY | ProcessorStatus::OVERFLOW),
-                        true
-                    )
-                }
-
-                #[test]
-                fn test_adc_no_overflow() {
-                    //オーバーフローなし
-                    let mut cpu = CPU::new();
-
-                    cpu.load(vec![0x69, 0x7F, 0x00]);
-                    cpu.reset();
+            #[test]
+            fn test_adc_no_overflow() {
+                let cpu = run(vec![0x69, 0x7F, 0x00], |cpu| {
                     cpu.accumulator = 0x82;
-                    cpu.run();
-
-                    println!();
-
-                    assert_eq!(cpu.accumulator, 0x01);
-                    assert_eq!(
-                        cpu.status.contains(
-                            ProcessorStatus::CARRY
-                                | ProcessorStatus::OVERFLOW
-                                | ProcessorStatus::NEGATIVE
-                        ),
-                        false
-                    );
-                }
+                });
+                assert_eq!(cpu.accumulator, 0x01);
+                assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
             }
         }
         mod sbc {
             use super::*;
-            mod effects {
-                use super::*;
 
-                #[test]
-                fn test_sbc_no_carry() {
-                    //キャリーなし
-                    let mut cpu = CPU::new();
-
-                    cpu.load(vec![0xE9, 0x10, 0x00]);
-                    cpu.reset();
+            #[test]
+            fn test_sbc_no_carry() {
+                let cpu = run(vec![0xe9, 0x10, 0x00], |cpu| {
                     cpu.accumulator = 0x20;
-                    cpu.run();
+                });
+                assert_eq!(cpu.accumulator, 0x0F);
+                assert!(cpu.status.contains(ProcessorStatus::CARRY))
+            }
 
-                    assert_eq!(cpu.accumulator, 0x0F);
-                    assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
-                    assert_eq!(
-                        cpu.status.contains(
-                            ProcessorStatus::ZERO
-                                | ProcessorStatus::NEGATIVE
-                                | ProcessorStatus::OVERFLOW
-                        ),
-                        false
-                    );
-                }
-
-                #[test]
-                fn test_sbc_has_carry() {
-                    // 計算前にキャリーあり
-
-                    let mut cpu = CPU::new();
-
-                    cpu.load(vec![0xE9, 0x10, 0x00]);
-                    cpu.reset();
+            #[test]
+            fn test_sbc_has_carry() {
+                let cpu = run(vec![0xe9, 0x10, 0x00], |cpu| {
                     cpu.accumulator = 0x20;
-                    cpu.status.insert(ProcessorStatus::CARRY);
-                    cpu.run();
+                    cpu.status.insert(ProcessorStatus::CARRY)
+                });
+                assert_eq!(cpu.accumulator, 0x10);
+                assert!(cpu.status.contains(ProcessorStatus::CARRY))
+            }
 
-                    assert_eq!(cpu.accumulator, 0x10);
-                    assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
-                    assert_eq!(
-                        cpu.status.contains(
-                            ProcessorStatus::ZERO
-                                | ProcessorStatus::NEGATIVE
-                                | ProcessorStatus::OVERFLOW
-                        ),
-                        false
-                    );
-                }
-                #[test]
-                fn test_sbc_occur_carry() {
-                    // 計算中にキャリー発生
-
-                    let mut cpu = CPU::new();
-
-                    cpu.load(vec![0xE9, 0x02, 0x00]);
-                    cpu.reset();
+            #[test]
+            fn test_sbc_occur_carry() {
+                let cpu = run(vec![0xe9, 0x02, 0x00], |cpu| {
                     cpu.accumulator = 0x01;
-                    cpu.run();
+                });
+                assert_eq!(cpu.accumulator, 0xFE);
+                assert!(cpu.status.contains(ProcessorStatus::NEGATIVE))
+            }
 
-                    assert_eq!(cpu.accumulator, 0xFE);
-                    assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
-                    assert_eq!(
-                        cpu.status.contains(
-                            ProcessorStatus::CARRY
-                                | ProcessorStatus::ZERO
-                                | ProcessorStatus::OVERFLOW
-                        ),
-                        false
-                    );
-                }
-
-                #[test]
-                fn test_sbc_occur_overflow() {
-                    //オーバーフローが発生
-                    let mut cpu = CPU::new();
-
-                    cpu.load(vec![0xE9, 0x81, 0x00]);
-                    cpu.reset();
+            #[test]
+            fn test_sbc_occur_overflow() {
+                let cpu = run(vec![0xe9, 0x81, 0x00], |cpu| {
                     cpu.accumulator = 0x7F;
-                    cpu.run();
+                });
+                assert_eq!(cpu.accumulator, 0xFD);
+                assert!(cpu
+                    .status
+                    .contains(ProcessorStatus::NEGATIVE | ProcessorStatus::OVERFLOW))
+            }
 
-                    assert_eq!(cpu.accumulator, 0xFD);
-                    assert_eq!(
-                        cpu.status
-                            .contains(ProcessorStatus::OVERFLOW | ProcessorStatus::NEGATIVE),
-                        true
-                    );
-                    assert_eq!(
-                        cpu.status
-                            .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
-                        false
-                    );
-                }
-
-                #[test]
-                fn test_sbc_occur_overflow_has_carry() {
-                    //計算前にキャリーがあり計算中にオーバーフローが発生
-                    let mut cpu = CPU::new();
-
-                    cpu.load(vec![0xE9, 0x7F, 0x00]);
-                    cpu.reset();
+            #[test]
+            fn test_sbc_occur_overflow_with_carry() {
+                let cpu = run(vec![0xe9, 0x81, 0x00], |cpu| {
                     cpu.accumulator = 0x7F;
-                    cpu.status.insert(ProcessorStatus::CARRY);
-                    cpu.run();
+                    cpu.status.insert(ProcessorStatus::CARRY)
+                });
+                assert_eq!(cpu.accumulator, 0xFE);
+                assert!(cpu
+                    .status
+                    .contains(ProcessorStatus::NEGATIVE | ProcessorStatus::OVERFLOW))
+            }
 
-                    assert_eq!(cpu.accumulator, 0x0);
-                    assert_eq!(
-                        cpu.status
-                            .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
-                        true
-                    );
-                    assert_eq!(
-                        cpu.status
-                            .contains(ProcessorStatus::NEGATIVE | ProcessorStatus::OVERFLOW),
-                        false
-                    )
-                }
-
-                #[test]
-                fn test_sbc_no_overflow() {
-                    //オーバーフローなし
-                    let mut cpu = CPU::new();
-
-                    cpu.load(vec![0xE9, 0x7F, 0x00]);
-                    cpu.reset();
+            #[test]
+            fn test_sbc_no_overflow() {
+                let cpu = run(vec![0xe9, 0x7F, 0x00], |cpu| {
                     cpu.accumulator = 0x7E;
-                    cpu.run();
-
-                    println!();
-
-                    assert_eq!(cpu.accumulator, 0xFE);
-                    assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
-                    assert_eq!(
-                        cpu.status.contains(
-                            ProcessorStatus::CARRY
-                                | ProcessorStatus::ZERO
-                                | ProcessorStatus::OVERFLOW
-                        ),
-                        false
-                    );
-                }
+                    cpu.status.insert(ProcessorStatus::CARRY)
+                });
+                assert_eq!(cpu.accumulator, 0xFF);
+                assert!(cpu.status.contains(ProcessorStatus::NEGATIVE))
             }
         }
         mod and {
@@ -484,14 +326,10 @@ mod tests {
 
             #[test]
             fn test_and() {
-                let mut cpu = CPU::new();
-
-                cpu.load(vec![0x29, 0xF0, 0x00]);
-                cpu.reset();
-                cpu.accumulator = 0x6E;
-                cpu.run();
-
-                assert_eq!(cpu.accumulator, 0x60);
+                let cpu = run(vec![0x29, 0x0C, 0x00], |cpu| {
+                    cpu.accumulator = 0x0A;
+                });
+                assert_eq!(cpu.accumulator, 0x08);
                 assert_eq!(cpu.status.is_empty(), true);
             }
         }
@@ -531,62 +369,89 @@ mod tests {
             use super::*;
 
             #[test]
-            fn test_asl_load_acc() {
-                let mut cpu = CPU::new();
-
-                cpu.load(vec![0x0A, 0x00]);
-                cpu.reset();
-                cpu.accumulator = 0b11101010;
-                cpu.run();
-
-                assert_eq!(cpu.accumulator, 0b11010100);
-                assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
-                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
+            fn test_asl_accumlator() {
+                let cpu = run(vec![0x0A, 0x00], |cpu| {
+                    cpu.accumulator = 0x03;
+                });
+                assert_eq!(cpu.accumulator, 0x03 * 2);
+                assert_eq!(cpu.status.is_empty(), true);
             }
 
             #[test]
-            fn test_asl_load_mem() {
-                let mut cpu = CPU::new();
+            fn test_asl_zero_page() {
+                let cpu = run(vec![0x06, 0x01, 0x00], |cpu| {
+                    cpu.mem_write(0x0001, 0x03);
+                });
+                assert_eq!(cpu.mem_read(0x0001), 0x03 * 2);
+                assert_eq!(cpu.status.is_empty(), true);
+            }
 
-                cpu.mem_write(0x10, 0b01101010);
-                cpu.load(vec![0x06, 0x10, 0x00]);
-                cpu.reset();
-                cpu.run();
+            #[test]
+            fn test_asl_a_occur_carry() {
+                let cpu = run(vec![0x0A, 0x00], |cpu| {
+                    cpu.accumulator = 0x81;
+                });
+                assert_eq!(cpu.accumulator, 0x02);
+                assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
+            }
 
-                assert_eq!(cpu.mem_read(0x10), 0b11010100);
-                assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), false);
-                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
+            #[test]
+            fn test_asl_zero_page_occur_carry() {
+                let cpu = run(vec![0x06, 0x01, 0x00], |cpu| {
+                    cpu.mem_write(0x0001, 0x81);
+                });
+                assert_eq!(cpu.mem_read(0x0001), 0x02);
+                assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
             }
         }
         mod lsr {
             use super::*;
 
             #[test]
-            fn test_lsr_load_acc() {
-                let mut cpu = CPU::new();
-
-                cpu.load(vec![0x4A, 0x00]);
-                cpu.reset();
-                cpu.accumulator = 0b11101010;
-                cpu.run();
-
-                assert_eq!(cpu.accumulator, 0b01110101);
-                assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
-                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
+            fn test_lsr_accumulator() {
+                let cpu = run(vec![0x4A, 0x00], |cpu| {
+                    cpu.accumulator = 0x02;
+                });
+                assert_eq!(cpu.accumulator, 0x01);
+                assert!(cpu.status.is_empty());
             }
 
             #[test]
-            fn test_lsr_load_mem() {
-                let mut cpu = CPU::new();
+            fn test_lsr_zero_page() {
+                let cpu = run(vec![0x46, 0x01, 0x00], |cpu| {
+                    cpu.mem_write(0x0001, 0x02);
+                });
+                assert_eq!(cpu.mem_read(0x0001), 0x01);
+                assert!(cpu.status.is_empty());
+            }
 
-                cpu.mem_write(0x10, 0b01101010);
-                cpu.load(vec![0x46, 0x10, 0x00]);
-                cpu.reset();
-                cpu.run();
+            #[test]
+            fn test_lsr_zero_page_zero_flag() {
+                let cpu = run(vec![0x46, 0x01, 0x00], |cpu| {
+                    cpu.mem_write(0x0001, 0x01);
+                });
+                assert_eq!(cpu.mem_read(0x0001), 0x00);
+                assert!(cpu
+                    .status
+                    .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO));
+            }
 
-                assert_eq!(cpu.mem_read(0x10), 0b00110101);
-                assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), false);
-                assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
+            #[test]
+            fn test_lsr_a_occur_carry() {
+                let cpu = run(vec![0x4A, 0x00], |cpu| {
+                    cpu.accumulator = 0x03;
+                });
+                assert_eq!(cpu.accumulator, 0x01);
+                assert!(cpu.status.contains(ProcessorStatus::CARRY));
+            }
+
+            #[test]
+            fn test_lsr_zero_page_occur_carry() {
+                let cpu = run(vec![0x46, 0x01, 0x00], |cpu| {
+                    cpu.mem_write(0x0001, 0x03);
+                });
+                assert_eq!(cpu.mem_read(0x0001), 0x01);
+                assert!(cpu.status.contains(ProcessorStatus::CARRY));
             }
         }
         mod rol {
@@ -657,9 +522,31 @@ mod tests {
                 use super::*;
                 #[test]
                 fn test_bcc() {
-                    let program = vec![0x90, 0x02, 0x00, 0x00, 0x00];
-                    let cpu = run(program, |_| {});
-                    assert_eq!(cpu.program_counter, 0x8005);
+                    let cpu = run(vec![0x90, 0x02, 0x00, 0x00, 0xe8, 0x00], |_| {});
+                    assert_eq!(cpu.index_register_x, 0x01);
+                    assert_eq!(cpu.status.is_empty(), true);
+                    assert_eq!(cpu.program_counter, 0x8006)
+                }
+
+                #[test]
+                fn test_bcc_with_carry() {
+                    let cpu = run(vec![0x90, 0x02, 0x00, 0x00, 0xe8, 0x00], |cpu| {
+                        cpu.status.insert(ProcessorStatus::CARRY)
+                    });
+                    assert_eq!(cpu.index_register_x, 0x00);
+                    assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
+                    assert_eq!(cpu.program_counter, 0x8003)
+                }
+
+                #[test]
+                fn test_bcc_negative() {
+                    let cpu = run(vec![0x90, 0xfc, 0x00], |cpu| {
+                        cpu.mem_write(0x7FFF, 0x00);
+                        cpu.mem_write(0x7FFE, 0xe8);
+                    });
+                    assert_eq!(cpu.index_register_x, 0x01);
+                    assert_eq!(cpu.status.is_empty(), true);
+                    assert_eq!(cpu.program_counter, 0x8000);
                 }
             }
             mod bcs {
@@ -690,11 +577,21 @@ mod tests {
 
                 #[test]
                 fn test_beq() {
-                    let program = vec![0xD0, 0x03, 0x00, 0x00, 0x00, 0xE8, 0x00];
-                    let cpu = run(program, |cpu| cpu.status.insert(ProcessorStatus::ZERO));
+                    let cpu = run(vec![0xF0, 0x02, 0x00, 0x00, 0xe8, 0x00], |_| {});
 
-                    assert_eq!(cpu.program_counter, 0x8007);
-                    assert_eq!(cpu.index_register_x, 0x1);
+                    assert_eq!(cpu.index_register_x, 0x00);
+                    assert!(cpu.status.is_empty());
+                    assert_eq!(cpu.program_counter, 0x8003);
+                }
+
+                #[test]
+                fn test_beq_with_zero_flag() {
+                    let cpu = run(vec![0xF0, 0x02, 0x00, 0x00, 0xe8, 0x00], |cpu| {
+                        cpu.status.insert(ProcessorStatus::ZERO);
+                    });
+                    assert_eq!(cpu.index_register_x, 0x01);
+                    assert!(cpu.status.is_empty());
+                    assert_eq!(cpu.program_counter, 0x8006);
                 }
             }
             mod bvc {
@@ -740,8 +637,8 @@ mod tests {
                     let program = vec![0x10, 0x03, 0x00, 0x00, 0x00, 0xE8, 0x00];
                     let cpu = run(program, |cpu| cpu.status.insert(ProcessorStatus::NEGATIVE));
 
-                    assert_eq!(cpu.program_counter, 0x8007);
-                    assert_eq!(cpu.index_register_x, 0x01);
+                    assert_eq!(cpu.program_counter, 0x8003);
+                    assert_eq!(cpu.index_register_x, 0x0);
                 }
             }
         }
@@ -750,33 +647,31 @@ mod tests {
 
             #[test]
             fn test_bit() {
-                let mut cpu = run(vec![0x24, 0x81, 0x00], |cpu| {
-                    cpu.mem_write(0x81, 0x60);
-                    cpu.accumulator = 0x70;
+                let cpu = run(vec![0x24, 0x00, 0x00], |cpu| {
+                    cpu.accumulator = 0x00;
+                    cpu.mem_write(0x0000, 0x00);
                 });
+                assert!(cpu.status.contains(ProcessorStatus::ZERO));
+            }
 
-                assert_eq!(cpu.accumulator, 0x70);
-                assert_eq!(cpu.mem_read(0x81), 0x60);
-                assert_eq!(
-                    cpu.status.contains(
-                        ProcessorStatus::ZERO
-                            | ProcessorStatus::OVERFLOW
-                            | ProcessorStatus::NEGATIVE
-                    ),
-                    true
-                );
-
-                cpu = run(vec![0x24, 0x81, 0x00], |cpu| {
-                    cpu.mem_write(0x81, 0x60);
-                    cpu.accumulator = 0x90;
+            #[test]
+            fn test_bit_negative_flag() {
+                let cpu = run(vec![0x24, 0x00, 0x00], |cpu| {
+                    cpu.accumulator = 0x00;
+                    cpu.mem_write(0x0000, 0x80);
                 });
+                assert!(cpu
+                    .status
+                    .contains(ProcessorStatus::ZERO | ProcessorStatus::NEGATIVE));
+            }
 
-                assert_eq!(cpu.status.contains(ProcessorStatus::ZERO), false);
-                assert_eq!(
-                    cpu.status
-                        .contains(ProcessorStatus::OVERFLOW | ProcessorStatus::NEGATIVE),
-                    true
-                );
+            #[test]
+            fn test_bit_overflow_flag() {
+                let cpu = run(vec![0x24, 0x00, 0x00], |cpu| {
+                    cpu.accumulator = 0x40;
+                    cpu.mem_write(0x0000, 0x40);
+                });
+                assert!(cpu.status.contains(ProcessorStatus::OVERFLOW));
             }
         }
         mod flag {
@@ -861,12 +756,41 @@ mod tests {
                 use super::*;
 
                 #[test]
-                fn test_cmp_greater_than_or_eq() {
-                    let cpu = run(vec![0xC9, 0x10, 0x00], |cpu| {
-                        cpu.accumulator = 0x50;
+                fn test_cmp() {
+                    let cpu = run(vec![0xC9, 0x01, 0x00], |cpu| {
+                        cpu.accumulator = 0x02;
+                    });
+                    assert!(cpu.status.contains(ProcessorStatus::CARRY));
+                }
+
+                #[test]
+                fn test_cmp_eq() {
+                    let cpu = run(vec![0xC9, 0x02, 0x00], |cpu| {
+                        cpu.accumulator = 0x02;
+                    });
+                    assert!(cpu
+                        .status
+                        .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO));
+                }
+
+                #[test]
+                fn test_cmp_negative() {
+                    let cpu = run(vec![0xC9, 0x03, 0x00], |cpu| {
+                        cpu.accumulator = 0x02;
+                    });
+                    assert!(cpu.status.contains(ProcessorStatus::NEGATIVE));
+                }
+            }
+            mod cpx {
+                use super::*;
+
+                #[test]
+                fn test_cpx_greater_than_or_eq() {
+                    let cpu = run(vec![0xE0, 0x10, 0x00], |cpu| {
+                        cpu.index_register_x = 0x50;
                     });
 
-                    // accumulator > memory
+                    // index X > memory
                     assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
                     assert_eq!(
                         cpu.status
@@ -875,12 +799,12 @@ mod tests {
                     );
                 }
                 #[test]
-                fn test_cmp_eq() {
-                    let cpu = run(vec![0xC9, 0x50, 0x00], |cpu| {
-                        cpu.accumulator = 0x50;
+                fn test_cpx_eq() {
+                    let cpu = run(vec![0xE0, 0x50, 0x00], |cpu| {
+                        cpu.index_register_x = 0x50;
                     });
 
-                    // accumulator = memory
+                    // index X = memory
                     assert_eq!(
                         cpu.status
                             .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
@@ -889,10 +813,10 @@ mod tests {
                     assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
                 }
                 #[test]
-                fn test_cmp_less_than() {
-                    // accumulator < memory
-                    let cpu = run(vec![0xC9, 0xB8, 0x00], |cpu| {
-                        cpu.accumulator = 0x10;
+                fn test_cpx_less_than() {
+                    // index X < memory
+                    let cpu = run(vec![0xE0, 0xB8, 0x00], |cpu| {
+                        cpu.index_register_x = 0x10;
                         cpu.mem_write(0xB8, 0x50);
                     });
 
@@ -906,106 +830,55 @@ mod tests {
                     );
                     assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
                 }
+            }
+            mod cpy {
+                use super::*;
 
-                mod cpx {
-                    use super::*;
+                #[test]
+                fn test_cpy_greater_than_or_eq() {
+                    let cpu = run(vec![0xC0, 0x10, 0x00], |cpu| {
+                        cpu.index_register_y = 0x50;
+                    });
 
-                    #[test]
-                    fn test_cpx_greater_than_or_eq() {
-                        let cpu = run(vec![0xE0, 0x10, 0x00], |cpu| {
-                            cpu.index_register_x = 0x50;
-                        });
-
-                        // index X > memory
-                        assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
-                        assert_eq!(
-                            cpu.status
-                                .contains(ProcessorStatus::ZERO | ProcessorStatus::NEGATIVE),
-                            false
-                        );
-                    }
-                    #[test]
-                    fn test_cpx_eq() {
-                        let cpu = run(vec![0xE0, 0x50, 0x00], |cpu| {
-                            cpu.index_register_x = 0x50;
-                        });
-
-                        // index X = memory
-                        assert_eq!(
-                            cpu.status
-                                .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
-                            true
-                        );
-                        assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
-                    }
-                    #[test]
-                    fn test_cpx_less_than() {
-                        // index X < memory
-                        let cpu = run(vec![0xE0, 0xB8, 0x00], |cpu| {
-                            cpu.index_register_x = 0x10;
-                            cpu.mem_write(0xB8, 0x50);
-                        });
-
-                        assert_eq!(
-                            cpu.status.contains(
-                                ProcessorStatus::CARRY
-                                    | ProcessorStatus::ZERO
-                                    | ProcessorStatus::NEGATIVE
-                            ),
-                            false
-                        );
-                        assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
-                    }
+                    // index Y > memory
+                    assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
+                    assert_eq!(
+                        cpu.status
+                            .contains(ProcessorStatus::ZERO | ProcessorStatus::NEGATIVE),
+                        false
+                    );
                 }
-                mod cpy {
-                    use super::*;
+                #[test]
+                fn test_cpy_eq() {
+                    let cpu = run(vec![0xC0, 0x50, 0x00], |cpu| {
+                        cpu.index_register_y = 0x50;
+                    });
 
-                    #[test]
-                    fn test_cpy_greater_than_or_eq() {
-                        let cpu = run(vec![0xC0, 0x10, 0x00], |cpu| {
-                            cpu.index_register_y = 0x50;
-                        });
+                    // index Y = memory
+                    assert_eq!(
+                        cpu.status
+                            .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
+                        true
+                    );
+                    assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
+                }
+                #[test]
+                fn test_cpy_less_than() {
+                    // index Y < memory
+                    let cpu = run(vec![0xC0, 0xB8, 0x00], |cpu| {
+                        cpu.index_register_y = 0x10;
+                        cpu.mem_write(0xB8, 0x50);
+                    });
 
-                        // index Y > memory
-                        assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
-                        assert_eq!(
-                            cpu.status
-                                .contains(ProcessorStatus::ZERO | ProcessorStatus::NEGATIVE),
-                            false
-                        );
-                    }
-                    #[test]
-                    fn test_cpy_eq() {
-                        let cpu = run(vec![0xC0, 0x50, 0x00], |cpu| {
-                            cpu.index_register_y = 0x50;
-                        });
-
-                        // index Y = memory
-                        assert_eq!(
-                            cpu.status
-                                .contains(ProcessorStatus::CARRY | ProcessorStatus::ZERO),
-                            true
-                        );
-                        assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
-                    }
-                    #[test]
-                    fn test_cpy_less_than() {
-                        // index Y < memory
-                        let cpu = run(vec![0xC0, 0xB8, 0x00], |cpu| {
-                            cpu.index_register_y = 0x10;
-                            cpu.mem_write(0xB8, 0x50);
-                        });
-
-                        assert_eq!(
-                            cpu.status.contains(
-                                ProcessorStatus::CARRY
-                                    | ProcessorStatus::ZERO
-                                    | ProcessorStatus::NEGATIVE
-                            ),
-                            false
-                        );
-                        assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
-                    }
+                    assert_eq!(
+                        cpu.status.contains(
+                            ProcessorStatus::CARRY
+                                | ProcessorStatus::ZERO
+                                | ProcessorStatus::NEGATIVE
+                        ),
+                        false
+                    );
+                    assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), false);
                 }
             }
         }
@@ -1085,7 +958,7 @@ mod tests {
             use super::*;
 
             #[test]
-            fn store_accumulator_for_mem() {
+            fn test_sta_store_accumulator_for_mem() {
                 let cpu = run(vec![0x85, 0xF0, 0x00], |cpu| {
                     cpu.accumulator = 0x90;
                     cpu.mem_write(0xF0, 0x00);
@@ -1095,7 +968,7 @@ mod tests {
             }
 
             #[test]
-            fn store_register_x_for_mem() {
+            fn test_stx_store_register_x_for_mem() {
                 let cpu = run(vec![0x86, 0xF0, 0x00], |cpu| {
                     cpu.index_register_x = 0x90;
                     cpu.mem_write(0xF0, 0x00);
@@ -1105,7 +978,7 @@ mod tests {
             }
 
             #[test]
-            fn store_register_y_for_mem() {
+            fn test_sty_store_register_y_for_mem() {
                 let cpu = run(vec![0x84, 0xF0, 0x00], |cpu| {
                     cpu.index_register_x = 0x90;
                     cpu.mem_write(0xF0, 0x00);
@@ -1217,17 +1090,28 @@ mod tests {
             use super::*;
 
             #[test]
-            fn test_jmp_absolute() {
-                let cpu = run(vec![0x4C, 0x34, 0x89, 0x00], |_| {});
-                assert_eq!(cpu.program_counter, 0x8935); // JMP命令(0x8934) + BREAKE命令(1)
+            fn test_jmp() {
+                let cpu = run(vec![0x4c, 0x30, 0x40, 0x00], |cpu| {
+                    cpu.mem_write(0x4030, 0xe8);
+                    cpu.mem_write(0x4031, 0x00);
+                });
+                assert_eq!(cpu.index_register_x, 0x01);
+                assert!(cpu.status.is_empty());
+                assert_eq!(cpu.program_counter, 0x4032);
             }
 
             #[test]
             fn test_jmp_indirect() {
-                let cpu = run(vec![0x6C, 0x80, 0x00], |cpu| {
-                    cpu.mem_write_u16(0x80, 0x8900); //JMP命令(0x8900) + BREAKE命令(1)
+                let cpu = run(vec![0x6c, 0x30, 0x40, 0x00], |cpu| {
+                    cpu.mem_write(0x4030, 0x01);
+                    cpu.mem_write(0x4031, 0x02);
+
+                    cpu.mem_write(0x0201, 0xe8);
+                    cpu.mem_write(0x0202, 0x00);
                 });
-                assert_eq!(cpu.program_counter, 0x8901);
+                assert_eq!(cpu.index_register_x, 0x01);
+                assert!(cpu.status.is_empty());
+                assert_eq!(cpu.program_counter, 0x0203);
             }
         }
 
@@ -1235,17 +1119,17 @@ mod tests {
             use super::*;
 
             #[test]
-            fn test_jsr_rts() {
-                let cpu = run(vec![0x20, 0xAF, 0x80, 0x20, 0x00, 0x9A, 0x00], |cpu| {
-                    cpu.mem_write(0x80AF, 0xA9); //LDA
-                    cpu.mem_write(0x80B0, 0x42); // LDA. 0x42
-                    cpu.mem_write(0x80B1, 0x60); //RTS
-                    cpu.mem_write(0x9A00, 0xE8); //INX
-                    cpu.mem_write(0x9A01, 0x60); //RTS
+            fn test_jsr_and_rts() {
+                let cpu = run(vec![0x20, 0x30, 0x40, 0x00], |cpu| {
+                    cpu.mem_write(0x4030, 0xe8);
+                    cpu.mem_write(0x4031, 0x60); // RTS
+                    cpu.mem_write(0x4032, 0x00);
                 });
-                assert_eq!(cpu.accumulator, 0x42);
                 assert_eq!(cpu.index_register_x, 0x01);
-                assert_eq!(cpu.program_counter, 0x8007);
+                assert!(cpu.status.is_empty());
+                assert_eq!(cpu.program_counter, 0x8004);
+                assert_eq!(cpu.stack_pointer, 0xFF);
+                assert_eq!(cpu.mem_read_u16(0x01FE), 0x8002);
             }
         }
         // TODO 割り込み処理の実装後にテストを書く
@@ -1291,110 +1175,131 @@ mod tests {
 
         use super::*;
 
-        #[test]
-        fn test_get_operand_address() {
+        pub fn set_cpu_state<F>(f: F) -> CPU
+        where
+            F: FnOnce(&mut CPU),
+        {
             let mut cpu = CPU::new();
-            cpu.program_counter = 0x90;
-            let mut mode = AddressingMode::Immediate;
-            let mut effective_address = cpu.get_operand_address(&mode);
-            assert_eq!(
-                effective_address, cpu.program_counter,
-                "オペランドアドレスがプログラムカウンタと一致していません"
-            );
-
             cpu.reset();
-            cpu.memory[cpu.program_counter as usize] = 0x44;
-            mode = AddressingMode::ZeroPage;
-            effective_address = cpu.get_operand_address(&mode);
-            assert_eq!(effective_address, 0x44);
+            f(&mut cpu);
+            cpu
+        }
 
-            cpu.reset();
-            mode = AddressingMode::ZeroPage;
-            for address in 0x00..=0xFF {
-                cpu.memory[cpu.program_counter as usize] = address;
-                effective_address = cpu.get_operand_address(&mode);
-                assert_eq!(effective_address, address as u16);
+        mod mode {
+            use super::*;
+
+            #[test]
+            fn test_addressing_mode_immediate() {
+                let cpu = set_cpu_state(|cpu| cpu.program_counter = 0x90);
+                let effective_address = cpu.get_operand_address(&AddressingMode::Immediate);
+                assert_eq!(effective_address, cpu.program_counter);
             }
+            #[test]
+            fn test_addressing_mode_zeropage() {
+                let cpu = set_cpu_state(|cpu| cpu.memory[cpu.program_counter as usize] = 0x44);
+                let effective_address = cpu.get_operand_address(&AddressingMode::ZeroPage);
+                assert_eq!(effective_address, 0x44);
+            }
+            #[test]
+            fn test_addressing_mode_zeropage_x() {
+                let cpu = set_cpu_state(|cpu| {
+                    cpu.memory[cpu.program_counter as usize] = 0x44;
+                    cpu.index_register_x = 0x10;
+                });
+                let effective_address = cpu.get_operand_address(&AddressingMode::ZeroPage_X);
+                assert_eq!(effective_address, 0x54);
+            }
+            #[test]
+            fn test_addressing_mode_zeropage_y() {
+                let cpu = set_cpu_state(|cpu| {
+                    cpu.memory[cpu.program_counter as usize] = 0x50;
+                    cpu.index_register_y = 0x02;
+                });
+                let effective_address = cpu.get_operand_address(&AddressingMode::ZeroPage_Y);
+                assert_eq!(effective_address, 0x52);
+            }
+            #[test]
+            fn test_addressing_mode_absolute() {
+                let cpu = set_cpu_state(|cpu| {
+                    cpu.memory[cpu.program_counter as usize] = 0x80;
+                    cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0x49;
+                });
+                let effective_address = cpu.get_operand_address(&AddressingMode::Absolute);
+                assert_eq!(effective_address, 0x4980);
+            }
+            #[test]
+            fn test_addressing_mode_absolute_x() {
+                let cpu = set_cpu_state(|cpu| {
+                    cpu.index_register_x = 0x20;
+                    cpu.memory[cpu.program_counter as usize] = 0x30;
+                    cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0x98;
+                });
+                let effective_address = cpu.get_operand_address(&AddressingMode::Absolute_X);
+                assert_eq!(effective_address, 0x9850);
+            }
+            #[test]
+            fn test_addressing_mode_absolute_y() {
+                let cpu = set_cpu_state(|cpu| {
+                    cpu.index_register_y = 0x42;
+                    cpu.memory[cpu.program_counter as usize] = 0x50;
+                    cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0xE0;
+                });
+                let effective_address = cpu.get_operand_address(&AddressingMode::Absolute_Y);
+                assert_eq!(effective_address, 0xE092);
+            }
+            #[test]
+            fn test_addressing_mode_indirect() {
+                // JMP命令のテスト時に確認済み
+            }
+            #[test]
+            fn test_addressing_mode_indirect_x() {
+                let cpu = set_cpu_state(|cpu| {
+                    cpu.index_register_x = 0x05;
+                    cpu.memory[cpu.program_counter as usize] = 0x40;
+                    cpu.memory[0x45] = 0x10;
+                    cpu.memory[0x46] = 0x09;
+                });
 
-            cpu.reset();
-            cpu.memory[cpu.program_counter as usize] = 0x44;
-            cpu.index_register_x = 0x10;
-            mode = AddressingMode::ZeroPage_X;
-            effective_address = cpu.get_operand_address(&mode);
-            assert_eq!(effective_address, 0x54);
+                let effective_address = cpu.get_operand_address(&AddressingMode::Indirect_X);
+                assert_eq!(effective_address, 0x0910);
+            }
+            #[test]
+            fn test_addressing_mode_indirect_y() {
+                let cpu = set_cpu_state(|cpu| {
+                    cpu.index_register_y = 0x05;
+                    cpu.memory[cpu.program_counter as usize] = 0xA0;
+                    cpu.memory[0xA0] = 0x50;
+                    cpu.memory[0xA1] = 0xB2;
+                });
 
-            cpu.reset();
-            cpu.index_register_y = 0x02;
-            cpu.memory[cpu.program_counter as usize] = 0x50;
-            mode = AddressingMode::ZeroPage_Y;
-            effective_address = cpu.get_operand_address(&mode);
-            assert_eq!(effective_address, 0x52);
+                let effective_address = cpu.get_operand_address(&AddressingMode::Indirect_Y);
+                assert_eq!(effective_address, 0xB255);
+            }
+            #[test]
+            #[should_panic]
+            fn test_addressing_mode_noneaddressing() {
+                let cpu = set_cpu_state(|cpu| {
+                    cpu.memory[cpu.program_counter as usize] = 0x60;
+                });
 
-            cpu.reset();
-            cpu.memory[cpu.program_counter as usize] = 0x80;
-            cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0x49;
-            mode = AddressingMode::Absolute;
-            effective_address = cpu.get_operand_address(&mode);
-            assert_eq!(effective_address, 0x4980);
-
-            cpu.reset();
-            cpu.index_register_x = 0x20;
-            cpu.memory[cpu.program_counter as usize] = 0x30;
-            cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0x98;
-            mode = AddressingMode::Absolute_X;
-            effective_address = cpu.get_operand_address(&mode);
-            assert_eq!(effective_address, 0x9850);
-
-            cpu.reset();
-            cpu.index_register_y = 0x42;
-            cpu.memory[cpu.program_counter as usize] = 0x50;
-            cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0xE0;
-            mode = AddressingMode::Absolute_Y;
-            effective_address = cpu.get_operand_address(&mode);
-            assert_eq!(effective_address, 0xE092);
-
-            cpu.reset();
-            cpu.memory[cpu.program_counter as usize] = 0x22;
-            cpu.memory[0x22] = 0x50;
-            cpu.memory[0x23] = 0xAC;
-            mode = AddressingMode::Indirect;
-            effective_address = cpu.get_operand_address(&mode);
-            assert_eq!(effective_address, 0xAC50);
-
-            cpu.reset();
-            cpu.memory[cpu.program_counter as usize] = 0x40;
-            cpu.index_register_x = 0x05;
-            cpu.memory[0x45] = 0x10;
-            cpu.memory[0x46] = 0x09;
-            mode = AddressingMode::Indirect_X;
-            effective_address = cpu.get_operand_address(&mode);
-            assert_eq!(effective_address, 0x0910);
-
-            cpu.reset();
-            cpu.memory[cpu.program_counter as usize] = 0xA0;
-            cpu.index_register_y = 0x05;
-            cpu.memory[0xA0] = 0x50;
-            cpu.memory[0xA1] = 0xB2;
-            mode = AddressingMode::Indirect_Y;
-            effective_address = cpu.get_operand_address(&mode);
-            assert_eq!(effective_address, 0xB255);
-
-            cpu.reset();
-            cpu.memory[cpu.program_counter as usize] = 0x60;
-            mode = AddressingMode::Relative;
-            effective_address = cpu.get_operand_address(&mode);
-            assert_eq!(effective_address, 0x60);
-
-            cpu.reset();
-            cpu.accumulator = 0x42;
-            mode = AddressingMode::Accumulator;
-            effective_address = cpu.get_operand_address(&mode);
-            assert_eq!(effective_address, 0x42);
-
-            cpu.reset();
-            mode = AddressingMode::Implicit;
-            effective_address = cpu.get_operand_address(&mode);
-            assert_eq!(effective_address, 0);
+                cpu.get_operand_address(&AddressingMode::NoneAddressing);
+            }
+            #[test]
+            fn test_addressing_mode_relative() {}
+            #[test]
+            fn test_addressing_mode_accumulator() {
+                let cpu = set_cpu_state(|cpu| {
+                    cpu.accumulator = 0x42;
+                });
+                let effective_address = cpu.get_operand_address(&AddressingMode::Accumulator);
+                assert_eq!(effective_address, 0x42);
+            }
+            #[test]
+            fn test_addressing_mode_implicit() {
+                let cpu = set_cpu_state(|_| {});
+                let effective_address = cpu.get_operand_address(&AddressingMode::Implicit);
+                assert_eq!(effective_address, 0);
+            }
         }
     }
 

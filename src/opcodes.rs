@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use Operation::*;
 
 #[rustfmt::skip]
-#[derive(Clone, Copy)]
+#[derive(Debug,Clone, Copy)]
 pub enum Operation {
     ADC,AND,ASL,BCC,BCS,BEQ,BIT,BMI,BNE,BPL,BRK,BVC,BVS,CLC,
     CLD,CLI,CLV,CMP,CPX,CPY,DEC,DEX,DEY,EOR,INC,INX,INY,JMP,
@@ -11,6 +11,7 @@ pub enum Operation {
     RTS,SBC,SEC,SED,SEI,STA,STX,STY,TAX,TAY,TSX,TXA,TXS,TYA,
 }
 
+#[derive(Debug)]
 pub struct OpCode {
     pub code: u8,
     pub mnemonic: Operation,
