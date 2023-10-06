@@ -8,3 +8,6 @@ version = "0.1.0"
 [dependencies]
 bitflags = "2.4.0"
 lazy_static = "1.4"
+
+sdl2 = "0.35"
+rand = "0.8"
