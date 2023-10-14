@@ -4,7 +4,8 @@ pub mod opcodes;
 
 use std::env;
 
-use cpu::CPU;
+use bus::Bus;
+use cpu::{Mem, CPU};
 
 use rand::Rng;
 use sdl2::event::Event;
@@ -50,12 +51,15 @@ fn main() {
         0x60, 0xa2, 0x00, 0xea, 0xea, 0xca, 0xd0, 0xfb, 0x60,
     ];
 
-    let mut cpu = CPU::new();
+    let bus = Bus::new();
+    let mut cpu = CPU::new(bus);
 
-    cpu.memory[0x0600..(0x0600 + game_code.len())].copy_from_slice(&game_code[..]);
+    cpu.bus.cpu_vram[0x0600..(0x0600 + game_code.len())].copy_from_slice(&game_code[..]);
     cpu.mem_write_u16(0xFFFC, 0x0600);
 
     cpu.reset();
+
+    cpu.program_counter = 0x0600;
 
     // init sdl2
     let sdl_context = sdl2::init().unwrap();

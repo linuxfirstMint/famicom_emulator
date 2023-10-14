@@ -1,4 +1,5 @@
-use famicom_emulator::cpu::{AddressingMode, ProcessorStatus, CPU};
+use famicom_emulator::bus::Bus;
+use famicom_emulator::cpu::{AddressingMode, Mem, ProcessorStatus, CPU};
 
 #[cfg(test)]
 mod tests {
@@ -8,7 +9,8 @@ mod tests {
     where
         F: FnOnce(&mut CPU),
     {
-        let mut cpu = CPU::new();
+        let bus = Bus::new();
+        let mut cpu = CPU::new(bus);
         cpu.load(program);
         cpu.reset();
         f(&mut cpu);
@@ -20,6 +22,8 @@ mod tests {
         use super::*;
 
         mod lda {
+            use famicom_emulator::cpu::Mem;
+
             use super::*;
 
             #[test]
@@ -115,8 +119,7 @@ mod tests {
 
             #[test]
             fn test_tax_effects() {
-                let mut cpu = CPU::new();
-                cpu.load_and_run(vec![0xa9, 0x10, 0xaa, 0x00]);
+                let mut cpu = run(vec![0xa9, 0x10, 0xaa, 0x00], |_| {});
 
                 assert_eq!(cpu.index_register_x, 16);
                 assert_eq!(
@@ -125,10 +128,10 @@ mod tests {
                     false
                 );
 
-                cpu.load_and_run(vec![0xa9, 0x00, 0xaa, 0x00]);
+                cpu = run(vec![0xa9, 0x00, 0xaa, 0x00], |_| {});
                 assert_eq!(cpu.status.contains(ProcessorStatus::ZERO), true);
 
-                cpu.load_and_run(vec![0xa9, 0x80, 0xaa, 0x00]);
+                cpu = run(vec![0xa9, 0x00, 0xaa, 0x00], |_| {});
                 assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
             }
         }
@@ -138,8 +141,7 @@ mod tests {
 
             #[test]
             fn test_inx_effects() {
-                let mut cpu = CPU::new();
-                cpu.load_and_run(vec![0xe8, 0x00]);
+                let mut cpu = run(vec![0xe8, 0x00], |_| {});
 
                 assert_eq!(cpu.index_register_x, 1);
                 assert_eq!(
@@ -148,14 +150,14 @@ mod tests {
                     false
                 );
 
-                cpu.load_and_run(vec![0xa9, 0xff, 0xaa, 0xe8, 0x00]);
+                cpu = run(vec![0xa9, 0xff, 0xaa, 0xe8, 0x00], |_| {});
                 assert_eq!(cpu.index_register_x, 0);
                 assert_eq!(cpu.status.contains(ProcessorStatus::ZERO), true);
 
-                cpu.load_and_run(vec![0xa9, 0x80, 0xaa, 0xe8, 0x00]);
+                cpu = run(vec![0xa9, 0x80, 0xaa, 0xe8, 0x00], |_| {});
                 assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
 
-                cpu.load_and_run(vec![0xa9, 0xff, 0xaa, 0xe8, 0xe8, 0x00]);
+                cpu = run(vec![0xa9, 0xff, 0xaa, 0xe8, 0xe8, 0x00], |_| {});
                 assert_eq!(cpu.index_register_x, 1)
             }
         }
@@ -338,12 +340,9 @@ mod tests {
 
             #[test]
             fn test_eor() {
-                let mut cpu = CPU::new();
-
-                cpu.load(vec![0x49, 0xF0, 0x00]);
-                cpu.reset();
-                cpu.accumulator = 0x6E;
-                cpu.run();
+                let cpu = run(vec![0x49, 0xF0, 0x00], |cpu| {
+                    cpu.accumulator = 0x6E;
+                });
 
                 assert_eq!(cpu.accumulator, 0x9E);
                 assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
@@ -354,18 +353,17 @@ mod tests {
 
             #[test]
             fn test_ora() {
-                let mut cpu = CPU::new();
-
-                cpu.load(vec![0x09, 0xF0, 0x00]);
-                cpu.reset();
-                cpu.accumulator = 0x6E;
-                cpu.run();
+                let cpu = run(vec![0x09, 0xF0, 0x00], |cpu| {
+                    cpu.accumulator = 0x6E;
+                });
 
                 assert_eq!(cpu.accumulator, 0xFE);
                 assert_eq!(cpu.status.contains(ProcessorStatus::NEGATIVE), true);
             }
         }
         mod asl {
+            use famicom_emulator::cpu::Mem;
+
             use super::*;
 
             #[test]
@@ -405,6 +403,8 @@ mod tests {
             }
         }
         mod lsr {
+            use famicom_emulator::cpu::Mem;
+
             use super::*;
 
             #[test]
@@ -459,12 +459,9 @@ mod tests {
 
             #[test]
             fn test_rol_load_acc() {
-                let mut cpu = CPU::new();
-
-                cpu.load(vec![0x2A, 0x00]);
-                cpu.reset();
-                cpu.accumulator = 0b10101011;
-                cpu.run();
+                let cpu = run(vec![0x2A, 0x00], |cpu| {
+                    cpu.accumulator = 0b10101011;
+                });
 
                 assert_eq!(cpu.accumulator, 0b01010111);
                 assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
@@ -473,12 +470,9 @@ mod tests {
 
             #[test]
             fn test_rol_load_mem() {
-                let mut cpu = CPU::new();
-
-                cpu.mem_write(0x10, 0b01100101);
-                cpu.load(vec![0x26, 0x10, 0x00]);
-                cpu.reset();
-                cpu.run();
+                let cpu = run(vec![0x26, 0x10, 0x00], |cpu| {
+                    cpu.mem_write(0x10, 0b01100101);
+                });
 
                 assert_eq!(cpu.mem_read(0x10), 0b11001010);
                 assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), false);
@@ -490,12 +484,9 @@ mod tests {
 
             #[test]
             fn test_ror_load_acc() {
-                let mut cpu = CPU::new();
-
-                cpu.load(vec![0x6A, 0x00]);
-                cpu.reset();
-                cpu.accumulator = 0b10101011;
-                cpu.run();
+                let cpu = run(vec![0x6A, 0x00], |cpu| {
+                    cpu.accumulator = 0b10101011;
+                });
 
                 assert_eq!(cpu.accumulator, 0b11010101);
                 assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), true);
@@ -504,12 +495,9 @@ mod tests {
 
             #[test]
             fn test_ror_load_mem() {
-                let mut cpu = CPU::new();
-
-                cpu.mem_write(0x10, 0b01100101);
-                cpu.load(vec![0x66, 0x10, 0x00]);
-                cpu.reset();
-                cpu.run();
+                let cpu = run(vec![0x66, 0x10, 0x00], |cpu| {
+                    cpu.mem_write(0x10, 0b01100101);
+                });
 
                 assert_eq!(cpu.mem_read(0x10), 0b10110010);
                 assert_eq!(cpu.status.contains(ProcessorStatus::CARRY), false);
@@ -1041,7 +1029,7 @@ mod tests {
                     let cpu = run(vec![0x48, 0x00], |cpu| {
                         cpu.accumulator = 0x90;
                     });
-                    assert_eq!(cpu.memory[0x1FF], 0x90);
+                    assert_eq!(cpu.bus.cpu_vram[0x1FF], 0x90);
                     assert_eq!(cpu.stack_pointer, 0xFE);
                 }
                 #[test]
@@ -1050,7 +1038,7 @@ mod tests {
                         cpu.status = ProcessorStatus::CARRY | ProcessorStatus::ZERO;
                     });
 
-                    assert_eq!(cpu.memory[0x1FF], 0x03); // (ProcessorStatus::CARRY | ProcessorStatus::ZERO) to bit flag is 0x03
+                    assert_eq!(cpu.bus.cpu_vram[0x1FF], 0x03); // (ProcessorStatus::CARRY | ProcessorStatus::ZERO) to bit flag is 0x03
                     assert_eq!(cpu.stack_pointer, 0xFE);
                 }
             }
@@ -1179,7 +1167,8 @@ mod tests {
         where
             F: FnOnce(&mut CPU),
         {
-            let mut cpu = CPU::new();
+            let bus = Bus::new();
+            let mut cpu = CPU::new(bus);
             cpu.reset();
             f(&mut cpu);
             cpu
@@ -1196,14 +1185,15 @@ mod tests {
             }
             #[test]
             fn test_addressing_mode_zeropage() {
-                let cpu = set_cpu_state(|cpu| cpu.memory[cpu.program_counter as usize] = 0x44);
+                let cpu =
+                    set_cpu_state(|cpu| cpu.bus.cpu_vram[cpu.program_counter as usize] = 0x44);
                 let effective_address = cpu.get_operand_address(&AddressingMode::ZeroPage);
                 assert_eq!(effective_address, 0x44);
             }
             #[test]
             fn test_addressing_mode_zeropage_x() {
                 let cpu = set_cpu_state(|cpu| {
-                    cpu.memory[cpu.program_counter as usize] = 0x44;
+                    cpu.bus.cpu_vram[cpu.program_counter as usize] = 0x44;
                     cpu.index_register_x = 0x10;
                 });
                 let effective_address = cpu.get_operand_address(&AddressingMode::ZeroPage_X);
@@ -1212,7 +1202,7 @@ mod tests {
             #[test]
             fn test_addressing_mode_zeropage_y() {
                 let cpu = set_cpu_state(|cpu| {
-                    cpu.memory[cpu.program_counter as usize] = 0x50;
+                    cpu.bus.cpu_vram[cpu.program_counter as usize] = 0x50;
                     cpu.index_register_y = 0x02;
                 });
                 let effective_address = cpu.get_operand_address(&AddressingMode::ZeroPage_Y);
@@ -1221,8 +1211,8 @@ mod tests {
             #[test]
             fn test_addressing_mode_absolute() {
                 let cpu = set_cpu_state(|cpu| {
-                    cpu.memory[cpu.program_counter as usize] = 0x80;
-                    cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0x49;
+                    cpu.bus.cpu_vram[cpu.program_counter as usize] = 0x80;
+                    cpu.bus.cpu_vram[cpu.program_counter.wrapping_add(1) as usize] = 0x49;
                 });
                 let effective_address = cpu.get_operand_address(&AddressingMode::Absolute);
                 assert_eq!(effective_address, 0x4980);
@@ -1231,8 +1221,8 @@ mod tests {
             fn test_addressing_mode_absolute_x() {
                 let cpu = set_cpu_state(|cpu| {
                     cpu.index_register_x = 0x20;
-                    cpu.memory[cpu.program_counter as usize] = 0x30;
-                    cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0x98;
+                    cpu.bus.cpu_vram[cpu.program_counter as usize] = 0x30;
+                    cpu.bus.cpu_vram[cpu.program_counter.wrapping_add(1) as usize] = 0x98;
                 });
                 let effective_address = cpu.get_operand_address(&AddressingMode::Absolute_X);
                 assert_eq!(effective_address, 0x9850);
@@ -1241,8 +1231,8 @@ mod tests {
             fn test_addressing_mode_absolute_y() {
                 let cpu = set_cpu_state(|cpu| {
                     cpu.index_register_y = 0x42;
-                    cpu.memory[cpu.program_counter as usize] = 0x50;
-                    cpu.memory[cpu.program_counter.wrapping_add(1) as usize] = 0xE0;
+                    cpu.bus.cpu_vram[cpu.program_counter as usize] = 0x50;
+                    cpu.bus.cpu_vram[cpu.program_counter.wrapping_add(1) as usize] = 0xE0;
                 });
                 let effective_address = cpu.get_operand_address(&AddressingMode::Absolute_Y);
                 assert_eq!(effective_address, 0xE092);
@@ -1255,9 +1245,9 @@ mod tests {
             fn test_addressing_mode_indirect_x() {
                 let cpu = set_cpu_state(|cpu| {
                     cpu.index_register_x = 0x05;
-                    cpu.memory[cpu.program_counter as usize] = 0x40;
-                    cpu.memory[0x45] = 0x10;
-                    cpu.memory[0x46] = 0x09;
+                    cpu.bus.cpu_vram[cpu.program_counter as usize] = 0x40;
+                    cpu.bus.cpu_vram[0x45] = 0x10;
+                    cpu.bus.cpu_vram[0x46] = 0x09;
                 });
 
                 let effective_address = cpu.get_operand_address(&AddressingMode::Indirect_X);
@@ -1267,9 +1257,9 @@ mod tests {
             fn test_addressing_mode_indirect_y() {
                 let cpu = set_cpu_state(|cpu| {
                     cpu.index_register_y = 0x05;
-                    cpu.memory[cpu.program_counter as usize] = 0xA0;
-                    cpu.memory[0xA0] = 0x50;
-                    cpu.memory[0xA1] = 0xB2;
+                    cpu.bus.cpu_vram[cpu.program_counter as usize] = 0xA0;
+                    cpu.bus.cpu_vram[0xA0] = 0x50;
+                    cpu.bus.cpu_vram[0xA1] = 0xB2;
                 });
 
                 let effective_address = cpu.get_operand_address(&AddressingMode::Indirect_Y);
@@ -1279,7 +1269,7 @@ mod tests {
             #[should_panic]
             fn test_addressing_mode_noneaddressing() {
                 let cpu = set_cpu_state(|cpu| {
-                    cpu.memory[cpu.program_counter as usize] = 0x60;
+                    cpu.bus.cpu_vram[cpu.program_counter as usize] = 0x60;
                 });
 
                 cpu.get_operand_address(&AddressingMode::NoneAddressing);
@@ -1303,58 +1293,33 @@ mod tests {
         }
     }
 
-    mod memory_access {
-
-        use super::*;
-
-        #[test]
-        fn test_mem_read_write() {
-            let mut cpu = CPU::new();
-
-            cpu.mem_write(0x8000, 0xAB);
-            cpu.mem_write(0x8001, 0xCD);
-
-            let data1 = cpu.mem_read(0x8000);
-            let data2 = cpu.mem_read(0x8001);
-
-            assert_eq!(data1, 0xAB);
-            assert_eq!(data2, 0xCD);
-        }
-
-        #[test]
-        fn test_mem_read_write_u16() {
-            let mut cpu = CPU::new();
-            cpu.mem_write_u16(0x8000, 0xABCD);
-            let value = cpu.mem_read_u16(0x8000);
-            assert_eq!(value, 0xABCD)
-        }
-    }
-
     mod cpu_instruction_tests {
 
         use super::*;
 
         #[test]
         fn test_load() {
-            let mut cpu = CPU::new();
+            let bus = Bus::new();
+            let mut cpu = CPU::new(bus);
             let program: Vec<u8> = vec![0x01, 0x02, 0x03];
             cpu.load(program.clone());
 
             for (i, &byte) in program.iter().enumerate() {
                 let memory_index = 0x8000 + i;
                 assert!(
-                    memory_index < cpu.memory.len(),
+                    memory_index < cpu.bus.cpu_vram.len(),
                     "Memory index out of range: 0x{:X}",
                     memory_index
                 );
-                assert_eq!(cpu.memory[memory_index], byte);
+                assert_eq!(cpu.bus.cpu_vram[memory_index], byte);
             }
             assert_eq!(cpu.program_counter, 0);
         }
 
         #[test]
         fn test_reset() {
-            let mut cpu = CPU::new();
+            let bus = Bus::new();
+            let mut cpu = CPU::new(bus);
             cpu.accumulator = 1;
             cpu.index_register_x = 1;
             cpu.status.insert(ProcessorStatus::NEGATIVE);
@@ -1366,8 +1331,7 @@ mod tests {
 
         #[test]
         fn test_5_ops_working_together() {
-            let mut cpu = CPU::new();
-            cpu.load_and_run(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00]);
+            let cpu = run(vec![0xa9, 0xc0, 0xaa, 0xe8, 0x00], |_| {});
 
             assert_eq!(cpu.index_register_x, 0xc1)
         }
