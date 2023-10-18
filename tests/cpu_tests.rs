@@ -1,15 +1,25 @@
 use famicom_emulator::bus::Bus;
 use famicom_emulator::cpu::{AddressingMode, Mem, ProcessorStatus, CPU};
+use famicom_emulator::rom::Rom;
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    use std::fs;
+
+    fn test_rom() -> Rom {
+        let game_dir = "roms";
+        let game_file = "snake.nes";
+        let game = fs::read(format!("{}/{}", game_dir, game_file)).unwrap();
+        Rom::new(&game).unwrap()
+    }
+
     pub fn run<F>(program: Vec<u8>, f: F) -> CPU
     where
         F: FnOnce(&mut CPU),
     {
-        let bus = Bus::new();
+        let bus = Bus::new(test_rom());
         let mut cpu = CPU::new(bus);
         cpu.load(program);
         cpu.reset();
@@ -1167,7 +1177,7 @@ mod tests {
         where
             F: FnOnce(&mut CPU),
         {
-            let bus = Bus::new();
+            let bus = Bus::new(test_rom());
             let mut cpu = CPU::new(bus);
             cpu.reset();
             f(&mut cpu);
@@ -1299,7 +1309,7 @@ mod tests {
 
         #[test]
         fn test_load() {
-            let bus = Bus::new();
+            let bus = Bus::new(test_rom());
             let mut cpu = CPU::new(bus);
             let program: Vec<u8> = vec![0x01, 0x02, 0x03];
             cpu.load(program.clone());
@@ -1318,7 +1328,7 @@ mod tests {
 
         #[test]
         fn test_reset() {
-            let bus = Bus::new();
+            let bus = Bus::new(test_rom());
             let mut cpu = CPU::new(bus);
             cpu.accumulator = 1;
             cpu.index_register_x = 1;
