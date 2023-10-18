@@ -6,6 +6,8 @@ use std::env;
 
 use bus::Bus;
 use cpu::{Mem, CPU};
+use famicom_emulator::rom;
+// use rom::Rom;
 
 use rand::Rng;
 use sdl2::event::Event;

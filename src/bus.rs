@@ -1,4 +1,4 @@
-use crate::cpu::Mem;
+use crate::cpu::{self, Mem};
 
 pub struct Bus {
     pub cpu_vram: [u8; 2048],
