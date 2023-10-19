@@ -1,5 +1,5 @@
 ---
-name: enhancement issue template
+name: issue template
 about: Here is a enhancement template for creating an issue
 title: "[XXX]"
 assignees: ''
