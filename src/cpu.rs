@@ -13,7 +13,7 @@ bitflags! {
         const INTERRUPT_DISABLE = 1 << 2;
         const DECIMAL = 1 << 3;
         const BREAK = 1 << 4;
-        // 1 << 5 (0b0010_0000) Unused bit
+        const BREAK_2 = 1 << 5; // 1 << 5 (0b0010_0000) Unused bit
         const OVERFLOW = 1 << 6;
         const NEGATIVE = 1 << 7;
     }
@@ -89,7 +89,7 @@ impl CPU {
             program_counter: 0,
             index_register_x: 0,
             index_register_y: 0,
-            stack_pointer: 0xFF,
+            stack_pointer: 0xFD,
             bus: bus,
         }
     }
@@ -169,8 +169,8 @@ impl CPU {
         self.accumulator = 0;
         self.index_register_x = 0;
         self.index_register_y = 0;
-        self.stack_pointer = 0xff;
-        self.status = ProcessorStatus::empty();
+        self.stack_pointer = 0xfd;
+        self.status = ProcessorStatus::from_bits_truncate(0x24);
 
         self.program_counter = self.mem_read_u16(0xfffc);
     }
@@ -567,34 +567,6 @@ impl CPU {
         return;
     }
 
-    fn print_stack(&self) -> String {
-        let mut stack = BTreeMap::new();
-
-        if self.stack_pointer == 0xFF {
-            return String::from("[None]");
-        } else {
-            for i in self.stack_pointer..=0xFF {
-                let value = self.mem_read(0x0100 + i as u16);
-                let value_hex = format!("0x{:X}", value);
-                let addr = format!("0x{:03X}", 0x0100 + i as u16);
-                stack.insert(addr, value_hex);
-            }
-
-            let mut result = String::from("[");
-
-            // stackを一列で表示するための処理
-            let stack_info: Vec<String> = stack
-                .iter()
-                .map(|(key, value)| format!("{}: {}", key, value))
-                .collect();
-
-            result.push_str(&stack_info.join(", "));
-            result.push_str("]");
-
-            result
-        }
-    }
-
     // TODO 割り込み処理の実装後に実装
     // fn irq(&mut self) {
     //     if !self.status.contains(ProcessorStatus::INTERRUPT_DISABLE) {
@@ -639,6 +611,7 @@ impl CPU {
         let ref opcodes = *opcodes::OPCODES_MAP;
 
         loop {
+            callback(self);
             let code = self.mem_read(self.program_counter);
 
             self.program_counter += 1;
@@ -647,20 +620,6 @@ impl CPU {
             let opcode = opcodes
                 .get(&code)
                 .expect(&format!("OpCode: {:x} is not found", code));
-
-            info!(
-                "PC: {:#06X}, A: {:#04X}, X: {:#04X}, Y: {:#04X}, SP: {:#04X}, Stack: {:#04?} Status: {:#04X}, OpCode: {:#04X}, Mnemonic: {:#04?}, Direction: {:?}",
-                self.program_counter,
-                self.accumulator,
-                self.index_register_x,
-                self.index_register_y,
-                self.stack_pointer,
-                self.print_stack(),
-                self.status,
-                opcode.code,
-                opcode.mnemonic,
-                self.mem_read(0x02)  // Snake game key input storage location 
-            );
             match opcode.mnemonic {
                 LDA => self.lda(&opcode.mode),
                 LDX => self.ldx(&opcode.mode),
@@ -725,8 +684,6 @@ impl CPU {
             if program_counter_state == self.program_counter {
                 self.program_counter += (opcode.len - 1) as u16;
             }
-
-            callback(self);
         }
     }
 }

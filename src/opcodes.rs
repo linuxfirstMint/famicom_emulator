@@ -11,7 +11,7 @@ pub enum Operation {
     RTS,SBC,SEC,SED,SEI,STA,STX,STY,TAX,TAY,TSX,TXA,TXS,TYA,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct OpCode {
     pub code: u8,
     pub mnemonic: Operation,
