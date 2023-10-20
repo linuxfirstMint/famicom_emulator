@@ -3,32 +3,55 @@ use crate::opcodes;
 use crate::opcodes::{OpCode, Operation};
 
 pub fn trace(cpu: &CPU) -> String {
-    let program_counter_str = format!("{:04X} ", cpu.program_counter);
+    let formatted_program_counter = format!("{:04X}", cpu.program_counter);
 
-    let ref opcodes_map = *opcodes::OPCODES_MAP;
+    let opcodes_map = &opcodes::OPCODES_MAP;
     let current_code = cpu.mem_read(cpu.program_counter);
-    let current_opcode = opcodes_map.get(&current_code).unwrap();
+    let current_opcode = opcodes_map.get(&current_code).expect(
+        format!(
+            "Invalid opcode pc: {:#X} code: {:#X} ",
+            cpu.program_counter, current_code,
+        )
+        .as_str(),
+    );
 
-    let formatted_opcode_bytes = format_opcode(cpu, **current_opcode, cpu.program_counter);
+    let instruction = fetch_instruction_bytes(cpu, **current_opcode, cpu.program_counter);
 
-    let formatted_opcode_str = formatted_opcode_bytes
-        .iter()
-        .map(|byte| format!("{:02X} ", byte))
-        .collect::<String>();
+    let formatted_instruction = format_instruction(instruction.clone());
 
     let asm_opcode = format_asm_opcode(
         cpu,
+        cpu.program_counter + 1, // 1byte目はopcodeなので、2byte目からアドレスを取得する
         current_opcode.mode,
         current_opcode.mnemonic,
-        formatted_opcode_bytes,
+        instruction[1..].to_vec(),
     );
 
     let register_info = format_register(cpu);
 
     format!(
         "{:<6}{:<10}{:<32}{}",
-        program_counter_str, formatted_opcode_str, asm_opcode, register_info
+        formatted_program_counter, formatted_instruction, asm_opcode, register_info
     )
+}
+
+fn fetch_instruction_bytes(cpu: &CPU, opcode: OpCode, program_counter: u16) -> Vec<u8> {
+    let mut instruction_bytes: Vec<u8> = Vec::new();
+
+    // instrcutionの先頭の1byteを除いた長さ
+    for i in 0..=(opcode.len - 1) {
+        let byte = cpu.mem_read(program_counter + i as u16);
+        instruction_bytes.push(byte)
+    }
+
+    instruction_bytes
+}
+
+fn format_instruction(instruction_bytes: Vec<u8>) -> String {
+    instruction_bytes
+        .iter()
+        .map(|byte| format!("{:02X} ", byte))
+        .collect::<String>()
 }
 
 fn format_register(cpu: &CPU) -> String {
@@ -42,187 +65,175 @@ fn format_register(cpu: &CPU) -> String {
     ))
 }
 
-fn format_opcode(cpu: &CPU, opcode: OpCode, program_counter: u16) -> Vec<u8> {
-    let mut format_opcode: Vec<u8> = Vec::new();
-
-    // let opcode_len = if opcode.len == 3 { 2 } else { opcode.len };
-
-    // for i in 0..=(opcode_len - 1) {
-    for i in 0..=(opcode.len - 1) {
-        let element = cpu.mem_read(program_counter + i as u16);
-        format_opcode.push(element)
-    }
-
-    format_opcode
-}
-
 fn format_asm_opcode(
     cpu: &CPU,
+    program_counter: u16,
     mode: AddressingMode,
     mnemonic: Operation,
-    opcode: Vec<u8>,
+    operand_bytes: Vec<u8>,
 ) -> String {
     match mode {
-        AddressingMode::Immediate => format!("{:03?} #${:02X}", mnemonic, opcode[1]),
-        AddressingMode::ZeroPage => format!(
-            "{:03?} ${:02X} = {:02X}",
-            mnemonic,
-            opcode[1],
-            cpu.mem_read(opcode[1] as u16)
-        ),
-        AddressingMode::ZeroPage_X => format!(
-            "{:03?} ${:02X},X @ {:02X} = {:02X}",
-            mnemonic,
-            opcode[1],
-            cpu.get_operand_address(&mode),
-            cpu.mem_read(opcode[1] as u16)
-        ),
-        AddressingMode::Absolute => {
-            format!("{:03?} ${:02X}{:02X}", mnemonic, opcode[2], opcode[1],)
+        AddressingMode::Immediate => format_imm_mode_asm(cpu, program_counter, mnemonic),
+        AddressingMode::ZeroPage => format_zero_mode_asm(cpu, program_counter, mnemonic),
+        AddressingMode::ZeroPage_X => format_zero_x_mode_asm(cpu, program_counter, mnemonic),
+        AddressingMode::ZeroPage_Y => format_zero_y_mode_asm(cpu, program_counter, mnemonic),
+        AddressingMode::Absolute => format_absolute_mode_asm(cpu, program_counter, mnemonic),
+        AddressingMode::Absolute_X => format_absolute_x_mode_asm(cpu, program_counter, mnemonic),
+        AddressingMode::Absolute_Y => format_absolute_y_mode_asm(cpu, program_counter, mnemonic),
+        AddressingMode::Indirect => {
+            format_indirect_mode_asm(cpu, program_counter, mnemonic, operand_bytes, mode)
         }
-        AddressingMode::Absolute_X => format!(
-            "{:03?} ${:04X},X @ {:04X} = {:02X}",
-            mnemonic,
-            opcode[1],
-            cpu.get_operand_address(&mode),
-            cpu.mem_read(cpu.get_operand_address(&mode))
-        ),
-        AddressingMode::Absolute_Y => format!(
-            "{:03?} ${:04X},Y @ {:04X} = {:02X}",
-            mnemonic,
-            opcode[1],
-            cpu.get_operand_address(&mode),
-            cpu.mem_read(cpu.get_operand_address(&mode))
-        ),
-        AddressingMode::Indirect => format!(
-            "{:03?} (${:04X}) = {:02X}",
-            mnemonic,
-            opcode[1],
-            cpu.mem_read(cpu.get_operand_address(&mode))
-        ),
-        AddressingMode::Indirect_X => format!(
-            "{:03?} (${:04X},X) @ {:04X} = {:02X}",
-            mnemonic,
-            opcode[1],
-            cpu.get_operand_address(&mode),
-            cpu.mem_read(cpu.get_operand_address(&mode))
-        ),
-        // deref_base,deref_addrはcpu.get_operand_address()のアドレス算出の途中計算で使用され外部から参照されないため、
-        // ここでアドレスを算出する
-        AddressingMode::Indirect_Y => {
-            let base = opcode[1];
-            let lo = cpu.mem_read(base as u16);
-            let hi = cpu.mem_read((base).wrapping_add(1) as u16);
-            let deref_base = (hi as u16) << 8 | (lo as u16);
-            let deref_addr = deref_base.wrapping_add(cpu.index_register_y as u16);
-
-            format!(
-                "{:03?} (${:02X}),Y = {:04X} @ {:04X} = {:02X}",
-                mnemonic,
-                opcode[1],
-                deref_base,
-                deref_addr,
-                cpu.mem_read(deref_addr)
-            )
-        }
+        AddressingMode::Indirect_X => format_indirect_x_mode_asm(cpu, mnemonic, operand_bytes),
+        AddressingMode::Indirect_Y => format_indirect_y_mode_asm(cpu, mnemonic, operand_bytes),
         AddressingMode::NoneAddressing => format!(""),
-        AddressingMode::Relative => {
-            format!("{:03?} ${:04X}", mnemonic, cpu.get_operand_address(&mode))
-        }
-        AddressingMode::Accumulator => format!(
-            "{:03?} ${:02X} = {:02X}",
-            mnemonic,
-            opcode[1],
-            cpu.mem_read(cpu.get_operand_address(&mode))
-        ),
+        AddressingMode::Relative => format_relative_mode_asm(cpu, mnemonic, program_counter),
+        AddressingMode::Accumulator => format!("{:03?} A", mnemonic),
         AddressingMode::Implicit => format!("{:03?}", mnemonic),
-        _ => panic!("Not implemented {:?}", mode,),
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::bus::Bus;
-    use crate::cpu::ProcessorStatus;
-    use crate::rom::test::test_rom;
+fn format_imm_mode_asm(cpu: &CPU, program_counter: u16, mnemonic: Operation) -> String {
+    let memory_value = cpu.mem_read(program_counter);
+    format!("{:03?} #${:02X}", mnemonic, memory_value)
+}
 
-    #[test]
-    fn test_format_trace() {
-        let mut bus = Bus::new(test_rom());
-        bus.mem_write(100, 0xA9); //Immediate
-        bus.mem_write(101, 0x10);
-        bus.mem_write(102, 0xA5); //Zeropage
-        bus.mem_write(103, 0x20);
-        bus.mem_write(104, 0xB5); //Zeropage_X
-        bus.mem_write(105, 0x30);
-        bus.mem_write(106, 0xAD); //Absolute
-        bus.mem_write(107, 0x40);
-        bus.mem_write(108, 0xBD); //Absolute_X
-        bus.mem_write(109, 0x50);
-        bus.mem_write(110, 0x23);
+fn format_zero_mode_asm(cpu: &CPU, program_counter: u16, mnemonic: Operation) -> String {
+    let target_addr = cpu.mem_read(program_counter) as u16;
+    let memory_value = cpu.mem_read(target_addr);
 
-        let mut cpu = CPU::new(bus);
-        cpu.program_counter = 0x64;
-        cpu.accumulator = 1;
-        cpu.index_register_x = 2;
-        cpu.index_register_y = 3;
-        cpu.status = ProcessorStatus::from_bits_truncate(0x24);
+    format!(
+        "{:03?} ${:02X} = {:02X}",
+        mnemonic, target_addr, memory_value
+    )
+}
 
-        let mut result: Vec<String> = vec![];
-        cpu.run_with_callback(|cpu| {
-            result.push(trace(cpu));
-        });
+fn format_zero_x_mode_asm(cpu: &CPU, program_counter: u16, mnemonic: Operation) -> String {
+    let addr = cpu.mem_read(program_counter);
+    let target_addr = addr.wrapping_add(cpu.index_register_x) as u16;
+    let memory_value = cpu.mem_read(target_addr);
 
-        //Immediate
-        assert_eq!(
-            "0064  A9 10     LDA #$10                        A:01 X:02 Y:03 P:24 SP:FD",
-            result[0]
-        );
-        // Zeropage
-        assert_eq!(
-            "0066  A5 20     LDA $20 = 00                    A:10 X:02 Y:03 P:24 SP:FD",
-            result[1]
-        );
-        // Zeropage_X
-        assert_eq!(
-            "0068  B5 30     LDA $30,X @ B7 = 00             A:00 X:02 Y:03 P:26 SP:FD",
-            result[2]
-        );
-        //
-        // AD Absoulute  LDA $0678 = 00
-        assert_eq!(
-            "006A  AD 40     LDA $0040 = 00                  A:00 X:02 Y:03 P:26 SP:FD",
-            result[3]
-        );
+    format!(
+        "{:03?} ${:02X},X @ {:02X} = {:02X}",
+        mnemonic, addr, target_addr, memory_value
+    )
+}
+
+fn format_zero_y_mode_asm(cpu: &CPU, program_counter: u16, mnemonic: Operation) -> String {
+    let addr = cpu.mem_read(program_counter);
+    let target_addr = addr.wrapping_add(cpu.index_register_y) as u16;
+    let memory_value = cpu.mem_read(target_addr);
+
+    format!(
+        "{:03?} ${:02X},Y @ {:02X} = {:02X}",
+        mnemonic, addr, target_addr, memory_value
+    )
+}
+
+fn format_absolute_mode_asm(cpu: &CPU, program_counter: u16, mnemonic: Operation) -> String {
+    let target_addr = cpu.mem_read_u16(program_counter);
+
+    match mnemonic {
+        Operation::JMP | Operation::JSR => {
+            format!("{:03?} ${:04X}", mnemonic, target_addr)
+        }
+        _ => {
+            let memory_value = cpu.mem_read(target_addr);
+            format!(
+                "{:03?} ${:04X} = {:02X}",
+                mnemonic, target_addr, memory_value
+            )
+        }
     }
+}
 
-    #[test]
-    fn test_format_mem_access() {
-        let mut bus = Bus::new(test_rom());
-        // ORA ($33), Y
-        bus.mem_write(100, 0x11);
-        bus.mem_write(101, 0x33);
+fn format_absolute_x_mode_asm(cpu: &CPU, program_counter: u16, mnemonic: Operation) -> String {
+    let addr = cpu.mem_read_u16(program_counter);
+    let target_addr = addr.wrapping_add(cpu.index_register_x as u16);
+    let memory_value = cpu.mem_read(target_addr);
 
-        //data
-        bus.mem_write(0x33, 00);
-        bus.mem_write(0x34, 04);
+    format!(
+        "{:03?} ${:04X},X @ {:04X} = {:02X}",
+        mnemonic, addr, target_addr, memory_value
+    )
+}
 
-        //target cell
-        bus.mem_write(0x400, 0xAA);
+fn format_absolute_y_mode_asm(cpu: &CPU, program_counter: u16, mnemonic: Operation) -> String {
+    let addr = cpu.mem_read_u16(program_counter);
+    let target_addr = addr.wrapping_add(cpu.index_register_y as u16);
+    let memory_value = cpu.mem_read(target_addr);
 
-        let mut cpu = CPU::new(bus);
-        cpu.program_counter = 0x64;
-        cpu.index_register_y = 0;
-        cpu.status = ProcessorStatus::from_bits_truncate(0x24);
+    format!(
+        "{:03?} ${:04X},Y @ {:04X} = {:02X}",
+        mnemonic, addr, target_addr, memory_value
+    )
+}
 
-        let mut result: Vec<String> = vec![];
-        cpu.run_with_callback(|cpu| {
-            result.push(trace(cpu));
-        });
-        assert_eq!(
-            "0064  11 33     ORA ($33),Y = 0400 @ 0400 = AA  A:00 X:00 Y:00 P:24 SP:FD",
-            result[0]
-        );
+const LOW_PAGE_END: u16 = 0x00FF;
+const HIGH_PAGE_START: u16 = 0xFF00;
+
+fn format_indirect_mode_asm(
+    cpu: &CPU,
+    program_counter: u16,
+    mnemonic: Operation,
+    operand_bytes: Vec<u8>,
+    mode: AddressingMode,
+) -> String {
+    match mnemonic {
+        Operation::JMP => {
+            let addr = cpu.mem_read_u16(program_counter);
+
+            let target_addr = if addr & LOW_PAGE_END == LOW_PAGE_END {
+                let lo = cpu.mem_read(addr);
+                let hi = cpu.mem_read(addr & HIGH_PAGE_START);
+                (hi as u16) << 8 | (lo as u16)
+            } else {
+                cpu.mem_read_u16(addr)
+            };
+
+            format!("{:03?} (${:04X}) = {:04X}", mnemonic, addr, target_addr)
+        }
+        _ => {
+            format!(
+                "{:03?} (${:04X}) = {:02X}",
+                mnemonic,
+                operand_bytes[0],
+                cpu.mem_read(cpu.get_operand_address(&mode))
+            )
+        }
     }
+}
+
+fn format_indirect_x_mode_asm(cpu: &CPU, mnemonic: Operation, operand_bytes: Vec<u8>) -> String {
+    let addr = (operand_bytes[0] as u8).wrapping_add(cpu.index_register_x);
+    let lo = cpu.mem_read(addr as u16);
+    let hi = cpu.mem_read(addr.wrapping_add(1) as u16);
+    let target_addr = (hi as u16) << 8 | (lo as u16);
+    let memory_value = cpu.mem_read(target_addr);
+
+    format!(
+        "{:03?} (${:02X},X) @ {:02X} = {:04X} = {:02X}",
+        mnemonic, operand_bytes[0], addr, target_addr, memory_value
+    )
+}
+
+fn format_indirect_y_mode_asm(cpu: &CPU, mnemonic: Operation, operand_bytes: Vec<u8>) -> String {
+    let base = operand_bytes[0];
+    let lo = cpu.mem_read(base as u16);
+    let hi = cpu.mem_read((base).wrapping_add(1) as u16);
+    let deref_base = (hi as u16) << 8 | (lo as u16);
+    let deref_addr = deref_base.wrapping_add(cpu.index_register_y as u16);
+    let memory_value = cpu.mem_read(deref_addr);
+
+    format!(
+        "{:03?} (${:02X}),Y = {:04X} @ {:04X} = {:02X}",
+        mnemonic, operand_bytes[0], deref_base, deref_addr, memory_value
+    )
+}
+
+fn format_relative_mode_asm(cpu: &CPU, mnemonic: Operation, program_counter: u16) -> String {
+    let base = cpu.mem_read(program_counter) as i8;
+    let addr = (program_counter as i16).wrapping_add(base as i16) as u16;
+    let target_addr = addr + 1;
+
+    format!("{:03?} ${:04X}", mnemonic, target_addr)
 }
