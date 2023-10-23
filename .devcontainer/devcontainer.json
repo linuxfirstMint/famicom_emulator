@@ -27,7 +27,7 @@
 		"ghcr.io/devcontainers-contrib/features/neovim-apt-get:1": {},
 		"ghcr.io/devcontainers-contrib/features/starship:1": {}
 	},
-	"postCreateCommand": "chezmoi init --apply git@github.com:linuxfirstMint/dotfiles.git && pip install -r requirements.txt",
+	"postCreateCommand": "sudo apt update -y && sudo apt upgrade -y && sudo apt install -y libsdl2-dev && chezmoi init --apply git@github.com:linuxfirstMint/dotfiles.git && pip install -r requirements.txt",
 	"remoteUser": "vscode",
 	"customizations": {
 		"vscode": {
@@ -80,7 +80,7 @@
 	},
 	//
 	"containerEnv": {
-		"TZ": "Asia/Tokyo" // spyder依存のbabelにおいてTZの設定が必要
+		"TZ": "Asia/Tokyo"
 	}
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],

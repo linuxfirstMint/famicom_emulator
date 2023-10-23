@@ -1,6 +1,7 @@
 pylance==0.7.4
+pylint==3.0.2
 black==23.7.0
-ruff==0.0.287
+ruff==0.1.1
 pathlib==1.0.1
 requests==2.31.0
 parsel==1.8.1
