@@ -39,6 +39,8 @@
 				"GitHub.copilot",
 				"GitHub.copilot-chat",
 				"GitHub.copilot-labs",
+				"GitHub.copilot-preview",
+				"intellsmi.comment-translate",
 				//rust
 				"vadimcn.vscode-lldb",
 				"rust-lang.rust-analyzer",
@@ -75,6 +77,10 @@
 				"**/target/**": true
 			}
 		}
+	},
+	//
+	"containerEnv": {
+		"TZ": "Asia/Tokyo" // spyder依存のbabelにおいてTZの設定が必要
 	}
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
