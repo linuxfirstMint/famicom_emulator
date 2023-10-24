@@ -81,24 +81,39 @@ def generate_rust_code(lines: list[dict[str, str]]) -> str:
 
     rust_code += (
         "#[derive(Debug, Clone, Copy)]\n"
+        "pub enum OpGroup {\n"
+        "\tOfficial,\n"
+        "\tUnOfficial,\n"
+        "}\n\n"
+        "#[derive(Debug, Clone, Copy)]\n"
         "pub struct OpCode {\n"
         "\tpub code: u8,\n"
         "\tpub mnemonic: Operation,\n"
         "\tpub len: u8,\n"
         "\tpub cycles: u8,\n"
         "\tpub mode: AddressingMode,\n"
+        "\tpub group: OpGroup,\n"
         "}\n\n"
         "impl OpCode {\n"
-        "\tfn new(code: u8, mnemonic: Operation, len: u8, cycles: u8, mode: AddressingMode) -> Self {\n"
+        "\tfn new(\n"
+        "\t\tcode: u8,\n"
+        "\t\tmnemonic: Operation,\n"
+        "\t\tlen: u8,\n"
+        "\t\tcycles: u8,\n"
+        "\t\tmode: AddressingMode,\n"
+        "\t\tgroup: OpGroup,\n"
+        "\t) -> Self {\n"
         "\t\tOpCode {\n"
         "\t\t\tcode,\n"
         "\t\t\tmnemonic,\n"
         "\t\t\tlen,\n"
         "\t\t\tcycles,\n"
         "\t\t\tmode,\n"
+        "\t\t\tgroup,\n"
         "\t\t}\n"
         "\t}\n"
         "}\n\n"
+        "#[rustfmt::skip]\n"
         "lazy_static! {\n"
         "\tpub static ref CPU_OPS_CODES: Vec<OpCode> = vec![\n"
     )
@@ -108,13 +123,15 @@ def generate_rust_code(lines: list[dict[str, str]]) -> str:
     ) as pbar:
         # Add opcodes to Rust code
         for line in lines:
+            addressingmode = f"AddressingMode::{line['addressing_mode']},".ljust(29)
             rust_code += (
                 f"\t\tOpCode::new("
                 f"{line['opcode']}, "
-                f"{line['name'].replace('*', '')}, "
+                f"{line['name']}, "
                 f"{line['bytes']}, "
                 f"{line['cycles']}, "
-                f"AddressingMode::{line['addressing_mode']}),\n"
+                f"{addressingmode}"
+                f"OpGroup::{line['group']}),\n"
             )
             pbar.update(1)
 

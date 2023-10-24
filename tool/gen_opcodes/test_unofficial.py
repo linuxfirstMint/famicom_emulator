@@ -1,4 +1,4 @@
-from gen_opcodes.unofficial import parse_opcode_lines
+from unofficial import parse_opcode_lines
 
 
 def test_parse_opcode_lines():
@@ -23,6 +23,7 @@ def test_parse_opcode_lines():
             "bytes": "2",
             "cycles": "2",
             "addressing_mode": "Immediate",
+            "group": "UnOfficial",
         },
         {
             "opcode": "0x2B",
@@ -30,6 +31,7 @@ def test_parse_opcode_lines():
             "bytes": "2",
             "cycles": "2",
             "addressing_mode": "Immediate",
+            "group": "UnOfficial",
         },
         {
             "opcode": "0x87",
@@ -37,6 +39,7 @@ def test_parse_opcode_lines():
             "bytes": "2",
             "cycles": "3",
             "addressing_mode": "ZeroPage",
+            "group": "UnOfficial",
         },
         {
             "opcode": "0x97",
@@ -44,6 +47,7 @@ def test_parse_opcode_lines():
             "bytes": "2",
             "cycles": "4",
             "addressing_mode": "ZeroPage_Y",
+            "group": "UnOfficial",
         },
         {
             "opcode": "0x83",
@@ -51,6 +55,7 @@ def test_parse_opcode_lines():
             "bytes": "2",
             "cycles": "6",
             "addressing_mode": "Indirect_X",
+            "group": "UnOfficial",
         },
         {
             "opcode": "0x8F",
@@ -58,6 +63,7 @@ def test_parse_opcode_lines():
             "bytes": "3",
             "cycles": "4",
             "addressing_mode": "Absolute",
+            "group": "UnOfficial",
         },
         {
             "opcode": "0x02",
@@ -65,6 +71,7 @@ def test_parse_opcode_lines():
             "bytes": "1",
             "cycles": "0",
             "addressing_mode": "KIL (JAM) [HLT]Implied",
+            "group": "UnOfficial",
         },
         {
             "opcode": "0x12",
@@ -72,6 +79,7 @@ def test_parse_opcode_lines():
             "bytes": "1",
             "cycles": "0",
             "addressing_mode": "Implicit",
+            "group": "UnOfficial",
         },
         {
             "opcode": "0xBB",
@@ -79,6 +87,7 @@ def test_parse_opcode_lines():
             "bytes": "3",
             "cycles": "4",
             "addressing_mode": "LAR (LAE) [LAS]Absolute,Y",
+            "group": "UnOfficial",
         },
     ]
 

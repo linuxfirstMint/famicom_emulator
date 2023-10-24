@@ -105,6 +105,7 @@ def parse_opcode_line(line: str, name: str) -> Dict[str, str]:
         "opcode": extract_opcode(formatted_line[2]),
         "bytes": formatted_line[3],
         "cycles": extract_cycle(formatted_line[4]),
+        "group": "UnOfficial",  # 対象のurl先にはgroupがないので、ここで追加
     }
 
     return item_line

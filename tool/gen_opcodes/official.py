@@ -97,6 +97,7 @@ def extract_line(
                     "bytes": bytes_counts[k],
                     "cycles": cycles[k],
                     "addressing_mode": modes[k],
+                    "group": "Official",  # 対象のurl先にはgroupがないので、ここで追加
                 }
             )
         table_index += 1
