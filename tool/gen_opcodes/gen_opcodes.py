@@ -14,6 +14,11 @@ def main():
     Returns:
         None
     """
+    try:
+        output_path = set_target_path(filename="opcodes.rs")
+    except FileNotFoundError:
+        print("The output path does not exist.")
+        return
 
     opcodes = scraping.full_opcode_info()
 
@@ -21,9 +26,6 @@ def main():
         return
 
     rust_code = generate_rust_code(opcodes)
-
-    output_dir = Path.cwd() / "src"
-    output_path = output_dir / "opcodes.rs"
 
     # Create a tqdm progress bar
     with tqdm(
@@ -38,6 +40,35 @@ def main():
                 pbar.update(1)
 
     print(f"\n[DONE] output {output_path}")
+
+
+def set_target_path(path: str = "src", filename: str = "opcodes.rs") -> Path:
+    """
+    Sets the target path for the output file.
+
+    Args:
+        path (str): The path to the output directory. Defaults to "src".
+        filename (str): The name of the output file. Defaults to "opcodes.rs".
+
+    Returns:
+        Path: The full path to the output file.
+    """
+    exec_path = Path(__file__).parent.absolute()
+    project_base_path = exec_path
+
+    while project_base_path.name != "famicom_emulator":
+        project_base_path = project_base_path.parent
+        if not project_base_path.exists():
+            raise FileNotFoundError(project_base_path)
+
+    output_path = project_base_path / path
+
+    if not output_path.exists():
+        raise FileNotFoundError(output_path)
+
+    output_path = output_path / filename
+
+    return output_path
 
 
 def generate_rust_code(lines: list[dict[str, str]]) -> str:
@@ -81,24 +112,39 @@ def generate_rust_code(lines: list[dict[str, str]]) -> str:
 
     rust_code += (
         "#[derive(Debug, Clone, Copy)]\n"
+        "pub enum OpGroup {\n"
+        "\tOfficial,\n"
+        "\tUnOfficial,\n"
+        "}\n\n"
+        "#[derive(Debug, Clone, Copy)]\n"
         "pub struct OpCode {\n"
         "\tpub code: u8,\n"
         "\tpub mnemonic: Operation,\n"
         "\tpub len: u8,\n"
         "\tpub cycles: u8,\n"
         "\tpub mode: AddressingMode,\n"
+        "\tpub group: OpGroup,\n"
         "}\n\n"
         "impl OpCode {\n"
-        "\tfn new(code: u8, mnemonic: Operation, len: u8, cycles: u8, mode: AddressingMode) -> Self {\n"
+        "\tfn new(\n"
+        "\t\tcode: u8,\n"
+        "\t\tmnemonic: Operation,\n"
+        "\t\tlen: u8,\n"
+        "\t\tcycles: u8,\n"
+        "\t\tmode: AddressingMode,\n"
+        "\t\tgroup: OpGroup,\n"
+        "\t) -> Self {\n"
         "\t\tOpCode {\n"
         "\t\t\tcode,\n"
         "\t\t\tmnemonic,\n"
         "\t\t\tlen,\n"
         "\t\t\tcycles,\n"
         "\t\t\tmode,\n"
+        "\t\t\tgroup,\n"
         "\t\t}\n"
         "\t}\n"
         "}\n\n"
+        "#[rustfmt::skip]\n"
         "lazy_static! {\n"
         "\tpub static ref CPU_OPS_CODES: Vec<OpCode> = vec![\n"
     )
@@ -108,13 +154,15 @@ def generate_rust_code(lines: list[dict[str, str]]) -> str:
     ) as pbar:
         # Add opcodes to Rust code
         for line in lines:
+            addressingmode = f"AddressingMode::{line['addressing_mode']},".ljust(29)
             rust_code += (
                 f"\t\tOpCode::new("
                 f"{line['opcode']}, "
-                f"{line['name'].replace('*', '')}, "
+                f"{line['name']}, "
                 f"{line['bytes']}, "
                 f"{line['cycles']}, "
-                f"AddressingMode::{line['addressing_mode']}),\n"
+                f"{addressingmode}"
+                f"OpGroup::{line['group']}),\n"
             )
             pbar.update(1)
 

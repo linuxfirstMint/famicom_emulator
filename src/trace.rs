@@ -1,6 +1,5 @@
 use crate::cpu::{AddressingMode, Mem, CPU};
-use crate::opcodes;
-use crate::opcodes::{OpCode, Operation};
+use crate::opcodes::{self, OpCode, OpGroup, Operation};
 
 pub fn trace(cpu: &CPU) -> String {
     let formatted_program_counter = format!("{:04X}", cpu.program_counter);
@@ -19,6 +18,8 @@ pub fn trace(cpu: &CPU) -> String {
 
     let formatted_instruction = format_instruction(instruction.clone());
 
+    let asm_mnemonic_prefix = get_prefix(current_opcode.group);
+
     let asm_opcode = format_asm_opcode(
         cpu,
         cpu.program_counter + 1, // 1byte目はopcodeなので、2byte目からアドレスを取得する
@@ -30,8 +31,12 @@ pub fn trace(cpu: &CPU) -> String {
     let register_info = format_register(cpu);
 
     format!(
-        "{:<6}{:<10}{:<32}{}",
-        formatted_program_counter, formatted_instruction, asm_opcode, register_info
+        "{:<6}{:<9}{:<1}{:<32}{}",
+        formatted_program_counter,
+        formatted_instruction,
+        asm_mnemonic_prefix,
+        asm_opcode,
+        register_info
     )
 }
 
@@ -45,6 +50,13 @@ fn fetch_instruction_bytes(cpu: &CPU, opcode: OpCode, program_counter: u16) -> V
     }
 
     instruction_bytes
+}
+
+fn get_prefix(group: OpGroup) -> String {
+    match group {
+        OpGroup::Official => "".to_string(),
+        OpGroup::UnOfficial => "*".to_string(),
+    }
 }
 
 fn format_instruction(instruction_bytes: Vec<u8>) -> String {
@@ -100,7 +112,6 @@ fn format_imm_mode_asm(cpu: &CPU, program_counter: u16, mnemonic: Operation) -> 
 fn format_zero_mode_asm(cpu: &CPU, program_counter: u16, mnemonic: Operation) -> String {
     let target_addr = cpu.mem_read(program_counter) as u16;
     let memory_value = cpu.mem_read(target_addr);
-
     format!(
         "{:03?} ${:02X} = {:02X}",
         mnemonic, target_addr, memory_value

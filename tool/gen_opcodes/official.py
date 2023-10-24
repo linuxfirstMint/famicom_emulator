@@ -35,7 +35,7 @@ def extract_modes(selector: parsel.Selector, index: int) -> List[str]:
 
 def extract_opcodes_bytes(
     selector: parsel.Selector, index: int
-) -> Tuple[List[str], List[int]]:
+) -> Tuple[List[str], List[str]]:
     """
     Extracts opcodes and their corresponding byte counts from a selector object.
 
@@ -97,6 +97,7 @@ def extract_line(
                     "bytes": bytes_counts[k],
                     "cycles": cycles[k],
                     "addressing_mode": modes[k],
+                    "group": "Official",  # 対象のurl先にはgroupがないので、ここで追加
                 }
             )
         table_index += 1
@@ -118,7 +119,7 @@ def opcode_parse(content: bytes) -> Dict[str, Any]:
     return {"line": line}
 
 
-def disassembly(base: List[str]) -> Tuple[List[str], List[int]]:
+def disassembly(base: List[str]) -> Tuple[List[str], List[str]]:
     """
     Disassembles the given list of base codes into opcodes and byte counts.
 

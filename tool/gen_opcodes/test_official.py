@@ -1,5 +1,5 @@
 import parsel
-from gen_opcodes.official import extract_line
+from official import extract_line
 
 
 def test_extract_line():
@@ -286,6 +286,7 @@ def test_extract_line():
             "bytes": "2",
             "cycles": "2",
             "addressing_mode": "Immediate",
+            "group": "Official",
         },
         {
             "opcode": "0x65",
@@ -293,6 +294,7 @@ def test_extract_line():
             "bytes": "2",
             "cycles": "3",
             "addressing_mode": "ZeroPage",
+            "group": "Official",
         },
         {
             "opcode": "0x75",
@@ -300,6 +302,7 @@ def test_extract_line():
             "bytes": "2",
             "cycles": "4",
             "addressing_mode": "ZeroPage_X",
+            "group": "Official",
         },
         {
             "opcode": "0x6D",
@@ -307,6 +310,7 @@ def test_extract_line():
             "bytes": "3",
             "cycles": "4",
             "addressing_mode": "Absolute",
+            "group": "Official",
         },
         {
             "opcode": "0x7D",
@@ -314,6 +318,7 @@ def test_extract_line():
             "bytes": "3",
             "cycles": "4",
             "addressing_mode": "Absolute_X",
+            "group": "Official",
         },
         {
             "opcode": "0x79",
@@ -321,6 +326,7 @@ def test_extract_line():
             "bytes": "3",
             "cycles": "4",
             "addressing_mode": "Absolute_Y",
+            "group": "Official",
         },
         {
             "opcode": "0x61",
@@ -328,6 +334,7 @@ def test_extract_line():
             "bytes": "2",
             "cycles": "6",
             "addressing_mode": "Indirect_X",
+            "group": "Official",
         },
         {
             "opcode": "0x71",
@@ -335,6 +342,7 @@ def test_extract_line():
             "bytes": "2",
             "cycles": "5",
             "addressing_mode": "Indirect_Y",
+            "group": "Official",
         },
     ]
 
