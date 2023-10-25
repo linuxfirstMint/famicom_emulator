@@ -27,7 +27,12 @@
 		"ghcr.io/devcontainers-contrib/features/neovim-apt-get:1": {},
 		"ghcr.io/devcontainers-contrib/features/starship:1": {}
 	},
-	"postCreateCommand": "sudo apt update -y && sudo apt upgrade -y && sudo apt install -y libsdl2-dev && chezmoi init --apply git@github.com:linuxfirstMint/dotfiles.git && pip install -r requirements.txt",
+	"containerEnv": {
+		"TZ": "Asia/Tokyo",
+	},
+	"workspaceFolder": "/workspace/${localWorkspaceFolderBasename}",
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace/${localWorkspaceFolderBasename},type=bind,consistency=cached",
+	"postCreateCommand": "/bin/sh .devcontainer/postCreateCommand.sh",
 	"remoteUser": "vscode",
 	"customizations": {
 		"vscode": {
@@ -79,9 +84,6 @@
 		}
 	},
 	//
-	"containerEnv": {
-		"TZ": "Asia/Tokyo"
-	}
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	// Use 'postCreateCommand' to run commands after the container is created.
