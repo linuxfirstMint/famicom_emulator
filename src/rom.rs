@@ -114,14 +114,14 @@ pub mod test {
 
     use super::*;
 
-    struct TestRom {
-        header: Vec<u8>,
-        trainer: Option<Vec<u8>>,
-        pgp_rom: Vec<u8>,
-        chr_rom: Vec<u8>,
+    pub struct TestRom {
+        pub header: Vec<u8>,
+        pub trainer: Option<Vec<u8>>,
+        pub pgp_rom: Vec<u8>,
+        pub chr_rom: Vec<u8>,
     }
 
-    fn create_rom(rom: TestRom) -> Vec<u8> {
+    pub fn create_rom(rom: TestRom) -> Vec<u8> {
         let mut result = Vec::with_capacity(
             rom.header.len()
                 + rom.trainer.as_ref().map_or(0, |t| t.len())
@@ -139,17 +139,20 @@ pub mod test {
         result
     }
 
-    pub fn test_rom() -> Rom {
-        let test_rom = create_rom(TestRom {
+    pub fn test_rom(program: Vec<u8>) -> Rom {
+        let mut test_rom = TestRom {
             header: vec![
                 0x4E, 0x45, 0x53, 0x1A, 0x02, 0x01, 0x31, 00, 00, 00, 00, 00, 00, 00, 00, 00,
             ],
             trainer: None,
             pgp_rom: vec![1; 2 * PRG_ROM_PAGE_SIZE],
             chr_rom: vec![2; 1 * CHR_ROM_PAGE_SIZE],
-        });
+        };
 
-        Rom::new(&test_rom).unwrap()
+        // 先頭要素からプログラムのサイズ分を書き換える
+        test_rom.pgp_rom[0..program.len()].copy_from_slice(&program);
+
+        Rom::new(&create_rom(test_rom)).unwrap()
     }
 
     #[test]
