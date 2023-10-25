@@ -627,6 +627,47 @@ impl CPU {
     //     }
     // }
 
+    fn rax(&mut self, mode: &AddressingMode) {
+        self.lda(mode);
+        self.tax();
+    }
+
+    fn sax(&mut self, mode: &AddressingMode) {
+        let addr = self.get_operand_address(mode);
+        let value = self.accumulator & self.index_register_x;
+        self.mem_write(addr, value);
+    }
+
+    fn dcp(&mut self, mode: &AddressingMode) {
+        self.dec(mode);
+        self.cmp(mode);
+    }
+
+    fn isb(&mut self, mode: &AddressingMode) {
+        self.inc(mode);
+        self.sbc(mode);
+    }
+
+    fn slo(&mut self, mode: &AddressingMode) {
+        self.asl(mode);
+        self.ora(mode);
+    }
+
+    fn rla(&mut self, mode: &AddressingMode) {
+        self.rol(mode);
+        self.and(mode);
+    }
+
+    fn sre(&mut self, mode: &AddressingMode) {
+        self.lsr(mode);
+        self.eor(mode);
+    }
+
+    fn rra(&mut self, mode: &AddressingMode) {
+        self.ror(mode);
+        self.adc(mode);
+    }
+
     fn fetch_data(&self, mode: &AddressingMode) -> u8 {
         let addr = self.get_operand_address(mode);
         match mode {
@@ -726,7 +767,15 @@ impl CPU {
                 JMP => self.jmp(&opcode.mode),
                 JSR => self.jsr(&opcode.mode, &opcode.len),
                 RTS => self.rts(),
-                _ => todo!(),
+                LAX => self.rax(&opcode.mode),
+                SAX => self.sax(&opcode.mode),
+                DCP => self.dcp(&opcode.mode),
+                ISB => self.isb(&opcode.mode),
+                SLO => self.slo(&opcode.mode),
+                RLA => self.rla(&opcode.mode),
+                SRE => self.sre(&opcode.mode),
+                RRA => self.rra(&opcode.mode),
+                _ => todo!("mnemonic: {:?} ", opcode.mnemonic),
             }
 
             if program_counter_state == self.program_counter {
