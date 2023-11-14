@@ -4,3 +4,4 @@ use std::ops::RangeBounds;
 
 use register::control::ControlRegister;
 use register::constans::*;
+use register::addr::AddrRegister;
